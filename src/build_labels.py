@@ -70,6 +70,24 @@ def find_spid_column(columns) -> Optional[str]:
     return None
 
 
+def _read_sas_robust(sas_path: Path) -> pd.DataFrame:
+    """
+    NHATS SAS files are inconsistently encoded across rounds. Some use
+    UTF-8, others use Latin-1 / Windows-1252. Try a few common encodings
+    before giving up.
+    """
+    for enc in ('utf-8', 'latin-1', 'cp1252'):
+        try:
+            return pd.read_sas(sas_path, format='sas7bdat', encoding=enc)
+        except (UnicodeDecodeError, ValueError) as e:
+            last_err = e
+            continue
+    # last-resort: let pandas return raw bytes for text columns; we only
+    # need the numeric SPID and score columns so this still works
+    print(f'  [warn] all encodings failed; loading as bytes ({last_err})')
+    return pd.read_sas(sas_path, format='sas7bdat', encoding=None)
+
+
 def extract_one_round(sas_path: Path, tif_dir: Path, round_num: int
                       ) -> pd.DataFrame:
     """
@@ -78,7 +96,7 @@ def extract_one_round(sas_path: Path, tif_dir: Path, round_num: int
     """
     score_col = f'cg{round_num}dclkdraw'
     print(f'[round {round_num:02d}] loading {sas_path.name}...')
-    df = pd.read_sas(sas_path, format='sas7bdat', encoding='utf-8')
+    df = _read_sas_robust(sas_path)
 
     spid_col = find_spid_column(df.columns)
     if spid_col is None:
