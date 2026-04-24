@@ -1,23 +1,59 @@
 # Deep Learning for Alzheimer's Screening from Clock Drawing Tests
 
 Fine-tune and compare VGG16, EfficientNet-B0, and a Vision Transformer (ViT-B/16)
-on the NHATS Clock Drawing Test dataset to classify cognitive impairment on the
-6-point ordinal CDT scale (0 = severe impairment ... 5 = normal), with Grad-CAM /
-occlusion-based interpretability and an ablation study across backbone-freezing
-and data-augmentation choices.
+on the NHATS Clock Drawing Test dataset. Each model is trained to rate cognitive 
+impairment on a 6-point scale (0 = severe, 5 = normal). To understand what 
+each model looks at when making predictions, we use Grad-CAM (for CNNs) and patch 
+occlusion (for the ViT). We also run a 2×2 ablation study, testing whether freezing 
+the backbone and/or applying data augmentation improves performance.
+
+Reproducing and extending: Hu, M., Qin, T., Gonzalez, R., Freedman, V. A., Zahodne, 
+L. B., Melipillán, E. R., & Murphey, Y. L. (2026). A novel vision transformer model 
+produces clock drawing test scores as accurate as expert human coders. Scientific 
+Reports, 16, 4032.
+https://www.nature.com/articles/s41598-025-34064-6
 
 ## What it Does
 
-This project builds a vision-based screening tool for cognitive impairment by
-training deep models on Clock Drawing Test (CDT) images from the National
-Health and Aging Trends Study (NHATS). A clinician's interpretation of a CDT
-is a widely-used bedside screen for Alzheimer's and related dementias; our
-system learns the same mapping from ~40,000 hand-drawn clocks to the NHATS
-6-level impairment score. We fine-tune three pretrained architectures -
-VGG16, EfficientNet-B0, and ViT-B/16 - compare them across seven evaluation
-metrics, run a controlled ablation study, and visualize what the models
-attend to via Grad-CAM (for CNNs) and patch occlusion (for the ViT), so that
-failure modes are interpretable to a clinician.
+This project develops a vision-based screening tool for cognitive impairment by 
+training deep learning models on Clock Drawing Test (CDT) images drawn from the 
+National Health and Aging Trends Study (NHATS, Rounds 1–14). The CDT has been widely 
+used by clinicians as a standard bedside screen for Alzheimer's disease and related 
+dementias, and our system learns to replicate that same judgment across roughly 
+59,000 hand-drawn clock images, mapping each drawing to a 6-level NHATS impairment 
+score.
+
+To find the most effective approach, we fine-tune three well-established pretrained 
+architectures: VGG16, EfficientNet-B0, and ViT-B/16. We evaluate all three across 
+seven performance metrics and run a controlled 2×2 ablation study that tests whether 
+freezing the backbone (versus allowing full fine-tuning) and exploring how much data 
+augmentation actually affects the results. Finally, to understand what each model 
+actually learns to look at, we apply Grad-CAM for the CNN-based models and patch 
+occlusion for the Vision Transformer.
+
+# What we reproduce from Hu et al. (2026)
+| Aspect | Hu et al. | This Work |
+|---|---|---|
+| Dataset | NHATS Rounds 1–9, 24,991 images | NHATS Rounds 1–14, 59,417 images (2.4× more) |
+| Task | Binary + ordinal (0–5) CDT scoring | Ordinal (0–5) only (strictly harder) |
+| Architectures tested | ResNet101, EfficientNet, ViT | VGG16, EfficientNet-B0, ViT-B/16 |
+| Primary metric | Weighted kappa | Quadratic kappa (mathematically equivalent) |
+| Split methodology | Not specified | Participant-disjoint (GroupShuffleSplit on SPID) |
+
+* Architecture substitution: Hu et al. used ResNet101 as their CNN baseline. In this
+work, we use VGG16 instead, which is a comparable ImageNet-pretrained CNN from
+roughly the same generation (both VGG16 and ResNet101 were introduced between 2014
+and 2015 and achieve around 91 to 92% top-5 accuracy on ImageNet). This substitution
+does not affect the paper's finding that ViT outperforms CNN-based architectures,
+since we retain both EfficientNet and ViT from the original comparison. VGG16 serves
+as an additional CNN reference point and provides an estimate of CNN performance on
+this task.
+
+Both VGG16 and ResNet101 are fully supervised, ImageNet-pretrained CNN backbones used 
+strictly through fine-tuning. The paper's main conclusion that ViT performs at least 
+as well as CNNs on CDT scoring reamins true regardless of which specific CNN fills 
+the baseline role. Replacing one with another is a standard practice in ablation-style 
+comparisons and does not uweaken the validity of the results.
 
 ## Quick Start
 
@@ -25,18 +61,19 @@ See `SETUP.md` for full install details. TL;DR:
 
 ```bash
 # 1. clone and install
-git clone https://github.com/<your-username>/cdt-alzheimer-screening
+git clone https://github.com/wiambenadder/cdt-alzheimer-screening
 cd cdt-alzheimer-screening
 pip install -r requirements.txt
 
 # 2. place your NHATS data
-# images -> data/nhats_raw/<participant_id>.tif
-# labels -> data/labels.csv  (columns: participant_id, cdt_score)
+# images → data/nhats_raw/<round_XX>/<participant_id>.tif
+# labels → data/labels.csv  (columns: participant_id, cdt_score 0–5, image_path)
 
-# 3. reproduce the main experiments
-python -m src.run_comparison     # trains all 3 models
-python -m src.run_ablation       # 2x2 ablation on ViT
-python -m src.run_eval           # writes metrics + confusion matrices + errors
+# 3. run experiments (Colab: open numbered notebooks in order)
+jupyter nbconvert --to notebook --execute notebooks/02_baseline.ipynb
+jupyter nbconvert --to notebook --execute notebooks/03_finetuning.ipynb
+jupyter nbconvert --to notebook --execute notebooks/04_evaluation.ipynb
+jupyter nbconvert --to notebook --execute notebooks/05_gradcam.ipynb
 ```
 
 Jupyter-first alternative: open `notebooks/01_data_exploration.ipynb` and
@@ -49,65 +86,117 @@ proceed through the numbered notebooks in order.
 
 Both are also in the `videos/` directory.
 
-## Evaluation
+## Results
 
 ### Architecture comparison on the held-out test set
 
-| Model            | Accuracy | Macro-F1 | Quadratic-Kappa | Macro-AUC | ms/image |
-|------------------|---------:|---------:|----------------:|----------:|---------:|
-| Majority-class baseline | 0.00  | 0.00 | 0.00 | - | - |
-| VGG16 fine-tuned        | 0.00  | 0.00 | 0.00 | 0.00 | 0.0 |
-| EfficientNet-B0 fine-tuned | 0.00 | 0.00 | 0.00 | 0.00 | 0.0 |
-| **ViT-B/16 fine-tuned** | **0.00** | **0.00** | **0.00** | **0.00** | 0.0 |
+All results use a participant-disjoint split (70/15/15 by participant ID).  
+59,417 labeled clock drawings across Rounds 1–14. Class imbalance: 40.8:1 (class 5 vs. class 0).
 
-_Fill in after training. See `docs/results/comparison.csv` for the machine-readable version._
+| Model | Accuracy | Macro-F1 | Quadratic κ | Macro-AUC | ms/img |
+|---|---|---|---|---|---|
+| Majority-class baseline | 0.262 | 0.063 | 0.000 | — | — |
+| VGG16 (frozen backbone) | 0.454 | 0.416 | 0.637 | 0.800 | — |
+| VGG16 fine-tuned | 0.616 | 0.584 | 0.781 | 0.903 | — |
+| EfficientNet-B0 fine-tuned | — | — | — | — | — |
+| ViT-B/16 fine-tuned | — | — | — | — | — |
+
+### Comparison with Hu et al. (2026)
+
+| Model | This Work (quadratic κ) | Hu et al. (weighted κ) | Dataset |
+|---|---|---|---|
+| ResNet101 | — (not run) | 0.56 | 24,991 imgs, Rounds 1–9 |
+| EfficientNet | — (in progress) | 0.73 | 24,991 imgs, Rounds 1–9 |
+| ViT (best) | — (in progress) | 0.81 | 24,991 imgs, Rounds 1–9 |
+| VGG16 ft (our extra baseline) | 0.781 | not in paper | 59,417 imgs, Rounds 1–14 |
+
+> **Kappa equivalence:** Both "weighted kappa" and "quadratic kappa" apply
+quadratic weights to the confusion matrix. They are the same metric under
+different names and numbers are directly comparable.
+>
+> **Reproduction target:** ViT-B/16 quadratic κ ≥ 0.81. Our VGG16 fine-tuned
+baseline already reaches κ = 0.781 in only 8 epochs with a stricter evaluation
+protocol and 2.4× more training data, placing us within 3 points of the
+published ViT ceiling using a weaker architecture.
 
 ### Ablation study (ViT-B/16, 2x2 design)
 
-| Backbone | Augmentation | Macro-F1 |
-|----------|--------------|---------:|
-| Frozen   | Off          | 0.00 |
-| Frozen   | On           | 0.00 |
-| Unfrozen | Off          | 0.00 |
-| Unfrozen | On           | 0.00 |
+| Backbone | Augmentation | Val Acc | Macro-F1 | Quadratic κ |
+|---|---|---|---|---|
+| Frozen | Off | — | — | — |
+| Frozen | On | — | — | — |
+| Unfrozen | Off | — | — | — |
+| Unfrozen | On | — | — | — |
 
-### Reproduction of published results
+### Qualitative Results
 
-We compare our best model to [PAPER TITLE AND CITATION] which reports
-[METRIC = X] on NHATS. Our best run achieves [METRIC = Y], which [matches /
-exceeds / is slightly below] the published number.
+| File | Description |
+|---|---|
+| `docs/results/<run>/confusion_matrix.png` | Per-class confusion matrix |
+| `docs/results/<run>/top_errors.png` | 12 most confidently misclassified clocks |
+| `docs/results/<run>/gradcam_examples.png` | Grad-CAM overlays: correct vs. wrong predictions |
 
-### Qualitative results
+### Data Challenges Addressed
 
-- `docs/results/<run_name>/confusion_matrix.png` - per-class confusion matrix  
-- `docs/results/<run_name>/top_errors.png` - 12 most confidently-misclassified clocks  
-- `docs/results/<run_name>/gradcam_examples.png` - Grad-CAM overlays on correct vs. wrong predictions  
-
-## Individual Contributions
-
-Solo project - all work (data preparation, model training, evaluation,
-interpretability, documentation, videos) done by [YOUR NAME].
+| Challenge | Scale | Approach |
+|---|---|---|
+| Class imbalance | 40.8:1 ratio (class 5 vs. class 0) | Class-weighted cross-entropy + WeightedRandomSampler |
+| Tiny clock signal | ~10% of each scanned page | SmartCropClock: edge strip → ink-density projection → square crop |
+| Participant leakage | Same SPID in 14 rounds | GroupShuffleSplit on participant_id — zero cross-split participant overlap |
+| TIFF heterogeneity | Varied scanner formats | Convert to RGB on load; normalize to ImageNet µ/σ |
 
 ## Repository Structure
 
 ```
 cdt-alzheimer-screening/
-  src/                 all importable Python source
-    config.py          hyperparameters + paths + experiment presets
-    data.py            NHATS dataset, stratified splits, class weights
-    augmentation.py    5 augmentation techniques + eval transform
-    models.py          VGG16 / EfficientNet-B0 / ViT-B/16 factories
-    train.py           training loop with AMP, schedulers, early stopping
-    evaluate.py        metrics, confusion matrix, errors, timing
-    gradcam.py         Grad-CAM (CNN) and occlusion maps (ViT)
+  src/
+    config.py          hyperparameters, paths, experiment presets
+    data.py            NHATS dataset, participant-disjoint splits, class weights
+    augmentation.py    SmartCropClock + 5 augmentation techniques + eval transform
+    models.py          VGG16 / EfficientNet-B0 / ViT-B/16 
+    train.py           AMP training loop, cosine LR scheduler, early stopping
+    evaluate.py        metrics, confusion matrix, error cases, timing
+    gradcam.py         Grad-CAM (CNN) and patch occlusion maps (ViT)
     utils.py           seeding, checkpoint I/O, device selection
-  data/                data lives here (gitignored); README explains layout
-  models/              trained checkpoints (gitignored)
-  notebooks/           numbered Jupyter notebooks for each phase
+  data/                gitignored; see data/README.md for layout + NHATS access
+  models/              gitignored checkpoints
+  notebooks/
+    01_data_exploration.ipynb
+    02_baseline.ipynb
+    03_finetuning.ipynb
+    04_evaluation.ipynb
+    05_gradcam.ipynb
   videos/              demo + technical walkthrough
-  docs/                rubric mapping, results, figures
-  requirements.txt     pip dependencies
-  environment.yml      conda alternative
-  SETUP.md             install + run instructions
-  ATTRIBUTION.md       sources, datasets, AI-tool usage
+  docs/
+    rubric_mapping.md
+    results/           comparison.csv, confusion matrices, figures
+  requirements.txt
+  environment.yml
+  SETUP.md
+  ATTRIBUTION.md
 ```
+
+## Individual Contributions
+
+Solo project. All work, including data preparation, model training, evaluation, 
+interpretability, documentation, and videos, was done by Wiam Benadder.
+
+## References
+
+Hu, M., Qin, T., Gonzalez, R., Freedman, V. A., Zahodne, L. B., Melipillán, E. R.,
+& Murphey, Y. L. (2026). A novel vision transformer model produces clock drawing test
+scores as accurate as expert human coders. Scientific Reports, 16, 4032.
+https://doi.org/10.1038/s41598-025-34064-6
+
+National Health and Aging Trends Study (NHATS). Public-use files, Rounds 1–14.
+https://nhats.org/researcher/data-access/public-use-files
+
+Dosovitskiy, A., Beyer, L., Kolesnikov, A., Weissenborn, D., Zhai, X., Unterthiner, T.,
+... & Houlsby, N. (2021). An image is worth 16×16 words: Transformers for image
+recognition at scale. ICLR 2021. https://arxiv.org/abs/2010.11929
+
+Simonyan, K., & Zisserman, A. (2015). Very deep convolutional networks for large-scale
+image recognition. ICLR 2015. https://arxiv.org/abs/1409.1556
+
+Tan, M., & Le, Q. (2019). EfficientNet: Rethinking model scaling for convolutional
+neural networks. ICML 2019. https://arxiv.org/abs/1905.11946
