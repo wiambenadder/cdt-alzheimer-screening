@@ -73,19 +73,43 @@ def find_spid_column(columns) -> Optional[str]:
 def _read_sas_robust(sas_path: Path) -> pd.DataFrame:
     """
     NHATS SAS files are inconsistently encoded across rounds. Some use
-    UTF-8, others use Latin-1 / Windows-1252. Try a few common encodings
-    before giving up.
+    UTF-8, others use Latin-1 / Windows-1252.
+
+    We try pyreadstat first (it handles mixed encoding gracefully via the
+    'encoding' parameter at the C level) and fall back to pandas if
+    pyreadstat is missing. pyreadstat is preinstalled on Colab/Kaggle.
     """
-    for enc in ('utf-8', 'latin-1', 'cp1252'):
+    # --- preferred path: pyreadstat ---
+    try:
+        import pyreadstat
+        for enc in ('utf-8', 'latin-1', 'cp1252', 'windows-1252'):
+            try:
+                df, _meta = pyreadstat.read_sas7bdat(
+                    str(sas_path), encoding=enc,
+                )
+                return df
+            except (UnicodeDecodeError, pyreadstat.ReadstatError) as e:
+                last_err = e
+                continue
+        # last resort: no encoding (reads bytes; numerics still work)
+        df, _meta = pyreadstat.read_sas7bdat(str(sas_path))
+        return df
+    except ImportError:
+        pass  # fall through to pandas
+
+    # --- fallback: pandas with iterator-safe encoding ---
+    for enc in ('latin-1', 'cp1252', 'utf-8'):
         try:
-            return pd.read_sas(sas_path, format='sas7bdat', encoding=enc)
+            # IMPORTANT: materialize fully inside the try so decoding errors
+            # during iteration (not just during header read) are caught
+            df = pd.read_sas(sas_path, format='sas7bdat', encoding=enc)
+            _ = df.shape   # force full read
+            return df
         except (UnicodeDecodeError, ValueError) as e:
             last_err = e
             continue
-    # last-resort: let pandas return raw bytes for text columns; we only
-    # need the numeric SPID and score columns so this still works
-    print(f'  [warn] all encodings failed; loading as bytes ({last_err})')
-    return pd.read_sas(sas_path, format='sas7bdat', encoding=None)
+
+    raise RuntimeError(f'Could not read {sas_path} with any encoding: {last_err}')
 
 
 def extract_one_round(sas_path: Path, tif_dir: Path, round_num: int
