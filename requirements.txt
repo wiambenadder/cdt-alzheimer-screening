@@ -1,0 +1,21 @@
+# Core deep learning
+torch>=2.1.0
+torchvision>=0.16.0
+
+# Data
+numpy>=1.24
+pandas>=2.0
+Pillow>=10.0
+scikit-learn>=1.3
+
+# Plotting
+matplotlib>=3.7
+seaborn>=0.12
+
+# Training aids
+tqdm>=4.65
+tensorboard>=2.14
+
+# Notebooks
+jupyterlab>=4.0
+ipywidgets>=8.0

@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Data - too big for git
+data/nhats_raw/
+data/processed/
+data/*.csv
+!data/README.md
+!data/sample_labels.csv
+
+# Trained models - use Git LFS or store elsewhere
+models/*.pt
+models/*.pth
+models/*.ckpt
+!models/README.md
+
+# Training artifacts
+docs/results/**/tb/
+docs/results/**/events.out.tfevents.*
+*.log
+
+# Videos - use Git LFS
+videos/*.mp4
+videos/*.mov
+!videos/README.md
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+*.swp
