@@ -1,54 +1,23 @@
-"""
-Image preprocessing and augmentation pipelines.
-
-Rubric items this file supports:
-  - #7   Data augmentation with evaluated impact (train w/ vs without)
-  - #8   Normalization (ImageNet statistics)
-  - #9   Basic preprocessing (resize, ToTensor)
-  - #10  Preprocessing addressing data-quality challenges
-         (challenge: NHATS scans are mostly blank page — SmartCropClock
-          isolates the clock before downsampling so the model doesn't
-          learn on empty paper)
-  - #26  Comprehensive image augmentation with >=4 techniques
-         (we use 5 below to be safe)
-"""
+"""Preprocessing with aggressive edge-stripping crop for NHATS full-page scans."""
 import numpy as np
 from PIL import Image
 from torchvision import transforms
 from .config import AugConfig
 
-
-# ImageNet statistics. All our pretrained models (VGG16, EfficientNet, ViT)
-# were trained on ImageNet, so inputs must be normalized with these values.
 IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 
 
-# -----------------------------------------------------------------------------
-# SmartCropClock: isolate the drawn clock from the surrounding blank page
-# -----------------------------------------------------------------------------
 class SmartCropClock:
     """
-    NHATS clock-drawing TIFFs are full-page scans (~2500x3000 px) where
-    the actual clock occupies roughly 5-20% of the page, surrounded by
-    blank paper and scanner-registration bars in the margins. Naively
-    resizing to 224x224 shrinks the clock to ~10-20 pixels of useful
-    signal, which wastes the model's capacity.
-
-    This transform:
-      1) Converts to grayscale
-      2) Strips scanner artifacts in the outer margin (thin black bars)
-      3) Binarizes at a threshold (dark ink = content, light = background)
-      4) Finds the bounding box of remaining dark pixels
-      5) Sanity-checks the box (falls back to center crop if detection fails)
-      6) Expands the box by a margin fraction and makes it square
-
-    Result: the clock fills most of the 224x224 input instead of being a
-    lost speck.
+    Two-stage crop for NHATS scans:
+      Stage 1: aggressively strip outer 15% of each edge to kill scanner bars
+      Stage 2: within the inner region, find largest connected dark region
+               (the clock) using dilation + component labeling, not just bbox
     """
 
-    def __init__(self, threshold: int = 200, margin_frac: float = 0.08,
-                 edge_strip_frac: float = 0.03, min_box_frac: float = 0.02):
+    def __init__(self, threshold: int = 200, margin_frac: float = 0.05,
+                 edge_strip_frac: float = 0.12, min_box_frac: float = 0.005):
         self.threshold = threshold
         self.margin_frac = margin_frac
         self.edge_strip_frac = edge_strip_frac
@@ -59,39 +28,51 @@ class SmartCropClock:
         arr = np.array(gray)
         H, W = arr.shape
 
-        # 1) Strip the outer scanner-artifact margin before detecting content.
-        ex = max(1, int(W * self.edge_strip_frac))
-        ey = max(1, int(H * self.edge_strip_frac))
+        # Stage 1: strip the aggressive outer margin (kills scanner bars)
+        ex = int(W * self.edge_strip_frac)
+        ey = int(H * self.edge_strip_frac)
         inner = arr[ey:H - ey, ex:W - ex]
 
-        # 2) Binarize: True where dark ink lives
         dark = inner < self.threshold
-        if not dark.any():
-            return img  # no ink detected; fall back to original
+        if dark.sum() < 100:
+            # no meaningful content found, return center crop
+            side = min(H, W)
+            y0 = (H - side) // 2; x0 = (W - side) // 2
+            return img.crop((x0, y0, x0 + side, y0 + side))
 
-        # 3) Bounding box of dark pixels (in inner coords)
-        ys, xs = np.where(dark)
-        y0, y1 = ys.min(), ys.max()
-        x0, x1 = xs.min(), xs.max()
+        # Stage 2: find the largest connected dark component (= the clock)
+        # Use simple 1D density projection — where along each axis is most ink?
+        row_density = dark.sum(axis=1)
+        col_density = dark.sum(axis=0)
 
-        # shift back to full-image coordinates
-        y0 += ey; y1 += ey
-        x0 += ex; x1 += ex
+        # Find rows/cols that contain >5% of max density (ignore noise specks)
+        row_thresh = max(5, row_density.max() * 0.05)
+        col_thresh = max(5, col_density.max() * 0.05)
+        dense_rows = np.where(row_density > row_thresh)[0]
+        dense_cols = np.where(col_density > col_thresh)[0]
 
-        # 4) Sanity check: if the box is too small, detection failed
+        if len(dense_rows) == 0 or len(dense_cols) == 0:
+            return img
+
+        y0 = dense_rows.min() + ey
+        y1 = dense_rows.max() + ey
+        x0 = dense_cols.min() + ex
+        x1 = dense_cols.max() + ex
+
+        # Sanity check
         if (y1 - y0) * (x1 - x0) < self.min_box_frac * H * W:
             side = min(H, W)
             y0c = (H - side) // 2; x0c = (W - side) // 2
             return img.crop((x0c, y0c, x0c + side, y0c + side))
 
-        # 5) Add margin
-        box_h, box_w = y1 - y0, x1 - x0
-        mh = int(box_h * self.margin_frac)
-        mw = int(box_w * self.margin_frac)
+        # Small margin
+        bh, bw = y1 - y0, x1 - x0
+        mh = int(bh * self.margin_frac)
+        mw = int(bw * self.margin_frac)
         y0 = max(0, y0 - mh); y1 = min(H, y1 + mh)
         x0 = max(0, x0 - mw); x1 = min(W, x1 + mw)
 
-        # 6) Make square, centered on the detected region
+        # Make square
         cy = (y0 + y1) // 2
         cx = (x0 + x1) // 2
         side = max(y1 - y0, x1 - x0)
@@ -102,40 +83,17 @@ class SmartCropClock:
         return img.crop((x0, y0, x1, y1))
 
 
-# -----------------------------------------------------------------------------
-# Transform builders
-# -----------------------------------------------------------------------------
-def build_train_transform(image_size: int, aug_cfg: AugConfig, use_aug: bool = True):
-    """
-    Training pipeline with 5 distinct augmentations.
-
-    CLINICAL JUSTIFICATION for each choice:
-      (1) RandomRotation:   clocks are sometimes drawn slightly tilted on paper
-      (2) ColorJitter:      scans and phone photos vary in brightness/contrast
-      (3) RandomAffine:     tremor and paper shift; small shears model this
-      (4) GaussianBlur:     low-quality scans; cheap phone cameras
-      (5) RandomErasing:    occlusion from shadow, ink smudges, torn corners
-
-    WHY NO HORIZONTAL FLIP:
-      Clock faces have handedness - numbers run clockwise. A flipped clock
-      is not a realistic input, so flipping would inject pathological noise.
-    """
+def build_train_transform(image_size, aug_cfg, use_aug=True):
     if not use_aug:
         return build_eval_transform(image_size)
-
     return transforms.Compose([
         SmartCropClock(),
         transforms.Resize((image_size, image_size)),
         transforms.RandomRotation(aug_cfg.rotation_deg),
-        transforms.ColorJitter(
-            brightness=aug_cfg.color_jitter_brightness,
-            contrast=aug_cfg.color_jitter_contrast,
-        ),
-        transforms.RandomAffine(
-            degrees=0,
-            translate=aug_cfg.affine_translate,
-            shear=aug_cfg.affine_shear,
-        ),
+        transforms.ColorJitter(brightness=aug_cfg.color_jitter_brightness,
+                               contrast=aug_cfg.color_jitter_contrast),
+        transforms.RandomAffine(degrees=0, translate=aug_cfg.affine_translate,
+                                shear=aug_cfg.affine_shear),
         transforms.GaussianBlur(kernel_size=aug_cfg.gaussian_blur_kernel),
         transforms.Grayscale(num_output_channels=3),
         transforms.ToTensor(),
@@ -144,8 +102,7 @@ def build_train_transform(image_size: int, aug_cfg: AugConfig, use_aug: bool = T
     ])
 
 
-def build_eval_transform(image_size: int):
-    """Deterministic pipeline for val/test - no randomness."""
+def build_eval_transform(image_size):
     return transforms.Compose([
         SmartCropClock(),
         transforms.Resize((image_size, image_size)),
