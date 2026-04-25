@@ -1,9 +1,9 @@
 """
-Smoke test: confirms the full pipeline runs end-to-end without training.
+In this file we have the smoke test: it confirms the full pipeline runs end-to-end without training.
 
-Usage:  python -m src.verify
+We use:  python -m src.verify
 
-Exits with code 0 if everything is wired correctly.
+Exits with code 0 if everything is wired correctly, which means our pipeline was successful.
 """
 import sys
 import torch
@@ -21,7 +21,7 @@ def main():
     print("CDT Alzheimer Screening - pipeline smoke test")
     print("=" * 60)
 
-    # 1) data
+    # 1. the data
     if not LABELS_CSV.exists():
         print(f"[fail] labels CSV not found at {LABELS_CSV}")
         print("       see data/README.md for how to set up NHATS data")
@@ -36,7 +36,7 @@ def main():
     class_weights = compute_class_weights(train_df)
     print(f"[ok] class weights: {class_weights.tolist()}")
 
-    # 2) transforms
+    # 2. transforms
     aug_cfg = AugConfig()
     train_tf = build_train_transform(data_cfg.image_size, aug_cfg, use_aug=True)
     eval_tf = build_eval_transform(data_cfg.image_size)
@@ -48,7 +48,7 @@ def main():
         train_ds, val_ds, test_ds, data_cfg,
     )
 
-    # 3) models - forward pass on one batch each
+    # 3. the models: the forward pass on one batch each
     device = get_device()
     print(f"[ok] device: {device}")
     imgs, labels = next(iter(train_loader))
