@@ -1,15 +1,10 @@
 """
-NHATS CDT dataset: loading, stratified splits, class imbalance handling,
+We have NHATS CDT dataset loader with train/val/test splits, class imbalance handling,
 and PyTorch DataLoader construction.
 
-Rubric items this file supports:
-  - #1  Train/val/test split with documented ratios
-  - #3  Proper DataLoader batching + shuffling
-  - #8  Normalization of input
-  - #9  Basic preprocessing (resize, format conversion)
-  - #10 Preprocessing pipeline addressing >=2 data quality challenges
-        Challenge 1: Class imbalance (weighted sampling + class weights)
-        Challenge 2: Image quality / format heterogeneity (TIFF -> RGB, resize)
+This helps us addresse 2 data quality challenges:
+  1. Class imbalance: weighted sampling + class weights
+  2. Image heterogeneity: from TIFF to RGB conversion, normalization, resizing
 """
 import pandas as pd
 import numpy as np
@@ -27,11 +22,11 @@ from .config import (
 
 class CDTDataset(Dataset):
     """
-    Clock Drawing Test dataset.
+    This is for the Clock Drawing Test dataset.
 
-    Expects a dataframe with columns:
-      - image_path: absolute path to clock image (.tif/.png/.jpg)
-      - label: integer 0..5 (NHATS CDT ordinal score)
+    A dataframe with columns:
+      - image_path: .tif/.png/.jpg
+      - label: integer from 0 to 5 
     """
 
     def __init__(self, df: pd.DataFrame, transform=None):
@@ -43,17 +38,14 @@ class CDTDataset(Dataset):
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        # PIL handles TIFF natively; convert to RGB to standardize channel count
-        # (TIFF may come as L, RGBA, or single-channel)
+        # PIL handles TIFF by converting to RGB to standardize channel count
         img = Image.open(row["image_path"]).convert("RGB")
         if self.transform is not None:
             img = self.transform(img)
         return img, int(row["label"])
 
 
-# -----------------------------------------------------------------------------
-# Label loading
-# -----------------------------------------------------------------------------
+
 def load_labels(
     labels_csv: Path = LABELS_CSV,
     images_dir: Path = RAW_IMAGES_DIR,
@@ -62,22 +54,17 @@ def load_labels(
     id_column: str = "participant_id",
 ) -> pd.DataFrame:
     """
-    Read the labels CSV and join with image filepaths.
-
-    NHATS ships a SAS/CSV file keyed by participant_id. You may need to
-    customize `score_column` / `id_column` based on the exact round
-    variables (e.g., HC1DISECG, CG1DCLOCKSCORE, etc.). Print df.columns
-    in a notebook first to confirm the right column name.
+    This reads the labels on the CSV and joins them with the image filepaths.
     """
     df = pd.read_csv(labels_csv)
     df = df.rename(columns={score_column: "label", id_column: "participant_id"})
     df["image_path"] = df["participant_id"].apply(
         lambda pid: str(images_dir / f"{pid}{image_ext}")
     )
-    # keep only valid scores 0..5
+    # only use scores from 0 to 5
     df = df[df["label"].between(0, NUM_CLASSES - 1)].copy()
     df["label"] = df["label"].astype(int)
-    # keep only rows whose image actually exists on disk (handles missing files)
+    # we only keep rows whose image actually exists on the disk
     exists_mask = df["image_path"].apply(lambda p: Path(p).exists())
     dropped = (~exists_mask).sum()
     if dropped > 0:
@@ -88,14 +75,9 @@ def load_labels(
     return df
 
 
-# -----------------------------------------------------------------------------
-# Splits
-# -----------------------------------------------------------------------------
 def stratified_split(df: pd.DataFrame, cfg: DataConfig):
     """
-    Stratified 70/15/15 train/val/test split on the CDT label.
-    Stratification ensures each split preserves the class distribution -
-    important for our imbalanced 6-class setup.
+    70/15/15 train/val/test split on the CDT label.
     """
     assert abs(cfg.train_ratio + cfg.val_ratio + cfg.test_ratio - 1.0) < 1e-6
 
@@ -105,7 +87,7 @@ def stratified_split(df: pd.DataFrame, cfg: DataConfig):
         stratify=df["label"],
         random_state=SEED,
     )
-    # temp_df is the combined val+test; split it proportionally
+    # temp_df is the combined val+test
     val_size_within_temp = cfg.val_ratio / (cfg.val_ratio + cfg.test_ratio)
     val_df, test_df = train_test_split(
         temp_df,
@@ -121,15 +103,12 @@ def stratified_split(df: pd.DataFrame, cfg: DataConfig):
     )
 
 
-# -----------------------------------------------------------------------------
-# Class-imbalance handling (rubric #10, challenge 1)
-# -----------------------------------------------------------------------------
 def compute_class_weights(train_df: pd.DataFrame) -> torch.Tensor:
     """
-    sklearn 'balanced' class weights = n_samples / (n_classes * count_y).
-    Fed into nn.CrossEntropyLoss(weight=...) so rare classes contribute
-    proportionally more to the loss. Computed only from training split
-    to avoid leaking test-set statistics.
+    sklearn 'balanced' class weights: n_samples / (n_classes * count_y).
+    Used in nn.CrossEntropyLoss(weight=...) so rare classes have higher loss 
+    contribution
+    Computed only on the training split to avoid any test set leakage.
     """
     labels = train_df["label"].values
     classes_present = np.unique(labels)
@@ -138,7 +117,7 @@ def compute_class_weights(train_df: pd.DataFrame) -> torch.Tensor:
         classes=classes_present,
         y=labels,
     )
-    # align to full NUM_CLASSES vector (classes not seen in train get weight 1.0)
+    # classes not seen in train get weight 1.0
     full = np.ones(NUM_CLASSES, dtype=np.float32)
     for c, w in zip(classes_present, weights_present):
         full[c] = w
@@ -147,7 +126,7 @@ def compute_class_weights(train_df: pd.DataFrame) -> torch.Tensor:
 
 def make_weighted_sampler(train_df: pd.DataFrame) -> WeightedRandomSampler:
     """
-    Alternative to class weighting: oversample minority classes by
+    Instead of class weighting: this oversamples the minority classes by
     drawing each example with probability ~ 1/class_count.
     """
     class_counts = train_df["label"].value_counts().sort_index()
@@ -159,9 +138,6 @@ def make_weighted_sampler(train_df: pd.DataFrame) -> WeightedRandomSampler:
     )
 
 
-# -----------------------------------------------------------------------------
-# DataLoaders
-# -----------------------------------------------------------------------------
 def build_dataloaders(train_ds, val_ds, test_ds, cfg: DataConfig, sampler=None):
     """Wrap datasets in DataLoaders with batching, shuffling, pin_memory."""
     shuffle_train = sampler is None  # can't both shuffle and use sampler
