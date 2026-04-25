@@ -1,39 +1,32 @@
 """
-Centralized configuration for the CDT Alzheimer Screening project.
+The Main configuration for this project.
 
-All hyperparameters, paths, and experimental settings live here so that
-experiments are reproducible and easy to sweep. Ablation studies just
-construct a different config object and re-run train().
+All of the hyperparameters, paths, and settings are defined here for
+reproducibility. For the ablation studies I will just construct a 
+different config objects and re-run train().
 
-Rubric items this file supports:
-  - #0  Modular code design (no magic numbers in training scripts)
-  - #6  Systematic hyperparameter tuning (sweep these dataclasses)
 """
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Tuple, List
 
 
-# -----------------------------------------------------------------------------
-# Paths
-# -----------------------------------------------------------------------------
+# The paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 MODELS_DIR = PROJECT_ROOT / "models"
 RESULTS_DIR = PROJECT_ROOT / "docs" / "results"
 
-# Expected data layout (you'll populate these during data setup):
-#   data/nhats_raw/<participant_id>.tif       <- clock images
-#   data/labels.csv                            <- cdt_score per participant
+# The data layout 
+#   data/nhats_raw/<participant_id>.tif, for clock images
+#   data/labels.csv  that will have the cdt_score per participant
 RAW_IMAGES_DIR = DATA_DIR / "nhats_raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 LABELS_CSV = DATA_DIR / "labels.csv"
 
-# -----------------------------------------------------------------------------
-# Task
-# -----------------------------------------------------------------------------
+# The task
 SEED = 42
-NUM_CLASSES = 6           # NHATS CDT ordinal scale: 0 (severe) ... 5 (normal)
+NUM_CLASSES = 6         # from 0 to 5
 CLASS_NAMES = [
     "0_severe_impairment",
     "1_significant_errors",
@@ -44,9 +37,7 @@ CLASS_NAMES = [
 ]
 
 
-# -----------------------------------------------------------------------------
-# Dataclass configs (pass these around instead of free-floating args)
-# -----------------------------------------------------------------------------
+# dataclass configurations (instead of free-floating args)
 @dataclass
 class DataConfig:
     image_size: int = 224
@@ -56,31 +47,31 @@ class DataConfig:
     val_ratio: float = 0.15
     test_ratio: float = 0.15
 
-    # Imbalance strategy for rubric #10 (preprocessing pipeline w/ 2+ challenges)
-    # Options: "class_weights" (weight CE loss), "weighted_sampler" (oversample
-    # minority classes), "none" (no correction, used as ablation baseline)
+    # for the imbalance classes we can use"class_weights" (use weight CE loss), 
+    # or "weighted_sampler" (to oversample minority classes), 
+    # or "none" (no correction, to use as ablation baseline)
     imbalance_strategy: str = "class_weights"
 
 
 @dataclass
 class TrainConfig:
     epochs: int = 25
-    lr_head: float = 1e-3        # higher LR for newly-initialized head
-    lr_backbone: float = 1e-5    # lower LR for pretrained backbone
-    weight_decay: float = 1e-4   # L2 regularization (rubric #5)
-    dropout: float = 0.3         # dropout on head (rubric #5)
+    lr_head: float = 1e-3        # we use higher LR for newly-initialized head
+    lr_backbone: float = 1e-5    # we use lower LR for pretrained backbone
+    weight_decay: float = 1e-4   # L2 regularization 
+    dropout: float = 0.3         # dropout on head 
 
-    optimizer: str = "adamw"     # "adamw" | "adam" | "sgd" - ablation #19
-    lr_scheduler: str = "cosine" # "cosine" | "plateau" | "none"  - rubric #14
+    optimizer: str = "adamw"     # "adamw" 
+    lr_scheduler: str = "cosine" # "cosine" 
 
-    early_stopping_patience: int = 5    # rubric #5
-    mixed_precision: bool = True        # rubric #16, #17
-    gradient_clip: float = 1.0          # rubric #16
+    early_stopping_patience: int = 5
+    mixed_precision: bool = True       
+    gradient_clip: float = 1.0          
 
 
 @dataclass
 class AugConfig:
-    """5 augmentation techniques (rubric #26 requires >=4)."""
+    """5 augmentation techniques."""
     rotation_deg: float = 15.0
     color_jitter_brightness: float = 0.2
     color_jitter_contrast: float = 0.2
@@ -88,15 +79,11 @@ class AugConfig:
     affine_shear: float = 5.0
     gaussian_blur_kernel: int = 3
     random_erasing_p: float = 0.1
-    # Why no horizontal flip? Clock drawings have handedness — a mirror-flipped
-    # clock is not a realistic input. Clinical convention matters here.
+    # No horizontal flip because mirrored clocks don't happen in a clinical practice.
 
 
-# -----------------------------------------------------------------------------
-# Experiment presets (for the comparison rubric #89 and ablation rubric #92)
-# -----------------------------------------------------------------------------
 def model_comparison_runs() -> List[dict]:
-    """Three architectures with matched training config. Feeds rubric #89."""
+    """We have 3 architectures with matching training config."""
     return [
         {"model_name": "vgg16",           "freeze_backbone": False, "run_name": "vgg16_ft"},
         {"model_name": "efficientnet_b0", "freeze_backbone": False, "run_name": "effb0_ft"},
@@ -107,7 +94,7 @@ def model_comparison_runs() -> List[dict]:
 def ablation_runs(base_model: str = "vit_b16") -> List[dict]:
     """
     2x2 ablation: {frozen, unfrozen} x {no-aug, full-aug}
-    This is rubric #92 - two independent design choices with controlled comparison.
+    We have 2 independent design choices with controlled comparison.
     """
     return [
         {"model_name": base_model, "freeze_backbone": True,  "use_aug": False,
@@ -122,7 +109,7 @@ def ablation_runs(base_model: str = "vit_b16") -> List[dict]:
 
 
 def hyperparameter_search() -> List[TrainConfig]:
-    """Three configs for rubric #6 (systematic HP tuning, >=3 configs)."""
+    """Three configurations (systematic HP tuning, these are 3 configs)."""
     return [
         TrainConfig(lr_head=1e-3, lr_backbone=1e-5, weight_decay=1e-4, dropout=0.3),
         TrainConfig(lr_head=5e-4, lr_backbone=5e-6, weight_decay=1e-3, dropout=0.5),
