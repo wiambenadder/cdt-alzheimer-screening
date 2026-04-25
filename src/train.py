@@ -162,7 +162,14 @@ def train(model_name: str,
     best_epoch = 0
     patience = 0
     history = []
-    ckpt_path = MODELS_DIR / f"{run_name}_best.pt"
+   # to always save to Drive, even if cfg.MODELS_DIR override didn't propagate
+   import os
+   _drive_models = "/content/drive/MyDrive/cdt-data/models"
+   if os.path.exists("/content/drive/MyDrive/cdt-data"):
+       os.makedirs(_drive_models, exist_ok=True)
+       ckpt_path = type(MODELS_DIR)(_drive_models) / f"{run_name}_best.pt"
+   else:
+       ckpt_path = MODELS_DIR / f"{run_name}_best.pt"
 
     for epoch in range(cfg.epochs):
         tr_loss, tr_acc = train_one_epoch(
