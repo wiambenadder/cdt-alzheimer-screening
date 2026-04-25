@@ -1,13 +1,13 @@
 """
 Training loop.
 
-Rubric items this file supports:
-  - #2   Training curves (TensorBoard scalars for loss + acc)
-  - #5   Regularization: weight_decay (L2) + dropout + early stopping
-  - #14  Learning rate scheduling (cosine / plateau)
-  - #16  Gradient clipping, mixed precision training
-  - #17  GPU/CUDA acceleration
-  - #19  Optimizer comparison (switch via TrainConfig.optimizer)
+What does this file do and which rubrics it fulfills:
+  1. rubric #2   Training curves (TensorBoard scalars for loss + acc)
+  2. rubric #5   Regularization: weight_decay (L2) + dropout + early stopping
+  3. rubric #14  Learning rate scheduling (cosine / plateau)
+  4. rubric #16  Gradient clipping, mixed precision training
+  5. rubric #17  GPU/CUDA acceleration
+  6. rubric #19  Optimizer comparison (the switch using TrainConfig.optimizer)
 """
 import json
 from pathlib import Path
@@ -26,13 +26,12 @@ from .models import get_model
 from .utils import set_seed, save_checkpoint, get_device, count_parameters
 
 
-# -----------------------------------------------------------------------------
-# Optimizers and schedulers
-# -----------------------------------------------------------------------------
+
+# These are optimizers and schedulers
 def build_optimizer(backbone_params, head_params, cfg: TrainConfig):
     """
-    Differential learning rates: lower for pretrained backbone, higher
-    for newly initialized head. Standard transfer-learning practice.
+    This used differential learning rates: it is lower for pretrained backbone and higher
+    for newly initialized head. This is how it is done in transfer learning
     """
     param_groups = []
     if len(backbone_params) > 0:
@@ -59,9 +58,7 @@ def build_scheduler(optimizer, cfg: TrainConfig, steps_per_epoch: int):
     raise ValueError(f"Unknown scheduler {cfg.lr_scheduler!r}")
 
 
-# -----------------------------------------------------------------------------
-# Per-epoch train / eval
-# -----------------------------------------------------------------------------
+# per-epoch training / evaluation
 def train_one_epoch(model, loader, criterion, optimizer, scheduler, scaler,
                     device, cfg: TrainConfig, epoch: int, writer=None):
     model.train()
@@ -77,12 +74,12 @@ def train_one_epoch(model, loader, criterion, optimizer, scheduler, scaler,
             loss = criterion(logits, labels)
 
         scaler.scale(loss).backward()
-        scaler.unscale_(optimizer)  # unscale before clipping
+        scaler.unscale_(optimizer)  # we unscale before clipping
         nn.utils.clip_grad_norm_(model.parameters(), cfg.gradient_clip)
         scaler.step(optimizer)
         scaler.update()
 
-        # Step per-batch scheduler (cosine); plateau steps on val loss later
+        # per-batch scheduler (cosine) and plateau steps on val loss later
         if scheduler is not None and not isinstance(scheduler, ReduceLROnPlateau):
             scheduler.step()
 
@@ -123,9 +120,6 @@ def evaluate(model, loader, criterion, device,
     return ev_loss, ev_acc
 
 
-# -----------------------------------------------------------------------------
-# Top-level train() entry point
-# -----------------------------------------------------------------------------
 def train(model_name: str,
           train_loader, val_loader,
           class_weights: torch.Tensor,
@@ -133,7 +127,7 @@ def train(model_name: str,
           run_name: str,
           freeze_backbone: bool = False) -> dict:
     """
-    Train one model and return a dict summary:
+    We traing one model and return a dict summary:
       {run_name, history, best_val_loss, best_epoch, checkpoint_path}
     """
     set_seed()
