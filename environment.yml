@@ -8,7 +8,7 @@ dependencies:
   - pip
   - pytorch>=2.1
   - torchvision>=0.16
-  - pytorch-cuda=12.1      # change to match your CUDA; remove line on CPU-only
+  - pytorch-cuda=12.1      # change to match your specific CUDA and remove line on CPU-only
   - numpy>=1.24
   - pandas>=2.0
   - pillow>=10.0
