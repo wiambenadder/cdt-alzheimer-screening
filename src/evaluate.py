@@ -1,12 +1,12 @@
 """
-Evaluation utilities: metrics, confusion matrix, error analysis, inference timing.
+Evaluation: metrics, confusion matrix, error analysis, inference timing.
 
-Rubric items this file supports:
-  - #86  Inference time / throughput measured
-  - #87  >=3 distinct evaluation metrics (we report 7)
-  - #88  Error analysis with visualization of failure cases
-  - #89  Comparison of multiple architectures (aggregate_results helper)
-  - #91  Both qualitative and quantitative evaluation
+This file satisfies the following rubrics:
+  - 1. rubric #86  inference time / throughput measured
+  - 2. rubric #87  >=3 distinct evaluation metrics 
+  - 3. rubric #88  Error analysis with visualization of failure cases
+  - 4. rubric #89  Comparison of multiple architectures (aggregate_results helper)
+  - 5. rubric #91  Both qualitative and quantitative evaluation
 """
 import time
 import json
@@ -29,12 +29,10 @@ from .config import NUM_CLASSES, CLASS_NAMES, RESULTS_DIR
 from .utils import get_device
 
 
-# -----------------------------------------------------------------------------
-# Collection
-# -----------------------------------------------------------------------------
+#the collection
 @torch.no_grad()
 def collect_predictions(model, loader, device: str):
-    """Run model over a loader and return (y_true, y_pred, y_probs)."""
+    """We run the model over a loader and return (y_true, y_pred, y_probs)."""
     model.eval()
     all_labels, all_preds, all_probs = [], [], []
     for imgs, labels in loader:
@@ -52,23 +50,21 @@ def collect_predictions(model, loader, device: str):
     )
 
 
-# -----------------------------------------------------------------------------
-# Metrics (rubric #87 - we return 7 distinct metrics)
-# -----------------------------------------------------------------------------
+#2. rubric #87  >=3 distinct evaluation metrics  (we return 7 metrics)
 def compute_all_metrics(y_true: np.ndarray,
                         y_pred: np.ndarray,
                         y_probs: np.ndarray) -> Dict[str, float]:
     """
-    Seven metrics, covering different aspects of performance on an
+    Seven metrics, which cover different aspects of the performance on an
     imbalanced ordinal classification task:
 
-      accuracy         - naive correctness
-      macro_f1         - unweighted average F1 (penalizes ignoring rare classes)
+      accuracy         - which is naive correctness
+      macro_f1         - unweighted average F1 (this penalizes ignoring rare classes)
       weighted_f1      - F1 weighted by class frequency
-      macro_precision  - average precision across classes
-      macro_recall     - average recall across classes
-      quadratic_kappa  - ordinal-aware agreement (close predictions partly credited)
-      macro_auc        - one-vs-rest ROC-AUC averaged over classes
+      macro_precision  - the average precision across classes
+      macro_recall     - the average recall across classes
+      quadratic_kappa  - the ordinal-aware agreement (close predictions partly credited)
+      macro_auc        - the one-vs-rest ROC-AUC averaged over classes
     """
     out = {
         "accuracy":         float(accuracy_score(y_true, y_pred)),
@@ -100,10 +96,7 @@ def save_classification_report(y_true, y_pred, path: Path):
     with open(path, "w") as f:
         json.dump(rep, f, indent=2)
 
-
-# -----------------------------------------------------------------------------
-# Confusion matrix
-# -----------------------------------------------------------------------------
+#confusion matrix
 def plot_confusion_matrix(y_true, y_pred, save_path: Path, normalize: bool = False):
     cm = confusion_matrix(y_true, y_pred, labels=list(range(NUM_CLASSES)))
     if normalize:
@@ -123,14 +116,12 @@ def plot_confusion_matrix(y_true, y_pred, save_path: Path, normalize: bool = Fal
     plt.close()
 
 
-# -----------------------------------------------------------------------------
-# Inference timing (rubric #86)
-# -----------------------------------------------------------------------------
+# 1. rubric #86  inference time / throughput measured
 def measure_inference_time(model, loader, device: str, n_batches: int = 10):
-    """Return images/sec and ms/image. Warmup with 2 batches before timing."""
+    """We return images/sec and ms/image. We warmup with 2 batches before timing."""
     model.eval()
     it = iter(loader)
-    # warmup
+    # the warmup
     with torch.no_grad():
         for _ in range(2):
             try:
@@ -163,9 +154,7 @@ def measure_inference_time(model, loader, device: str, n_batches: int = 10):
     }
 
 
-# -----------------------------------------------------------------------------
-# Error analysis (rubric #88)
-# -----------------------------------------------------------------------------
+#3. rubric #88  Error analysis with visualization of failure cases
 def analyze_errors(y_true: np.ndarray,
                    y_pred: np.ndarray,
                    y_probs: np.ndarray,
@@ -173,12 +162,12 @@ def analyze_errors(y_true: np.ndarray,
                    save_dir: Path,
                    k: int = 12) -> List[Dict]:
     """
-    Identify the k most-confidently-wrong predictions and save:
-      - A JSON log of them
-      - A PNG grid of the offending images
-    The qualitative discussion in your README/notebook should address
-    WHY the model failed on these: ordinal neighbors? visual ambiguity?
-    image quality? systematic bias toward majority class?
+    Here we identify the k most-confidently-wrong predictions and save:
+      1. A JSON log of them
+      2. A PNG grid of the offending images
+    We use this for a qualitative discussion in the README/notebook to address
+    WHY the model failed on these: ordinal neighbors? Was it visual ambiguity?
+    Was is image quality? Was it some sort of systematic bias toward a majority class?
     """
     save_dir = Path(save_dir)
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -189,7 +178,7 @@ def analyze_errors(y_true: np.ndarray,
     if len(wrong_idx) == 0:
         print("[eval] no errors - perfect predictions (unlikely)")
         return []
-    # sort by confidence descending: most-confident-wrongs are the worst
+    # we sort by confidence descending: the most-confident-wrongs are the worst
     order = np.argsort(-confidences[wrong_idx])[:k]
     to_show = wrong_idx[order]
 
@@ -232,13 +221,11 @@ def analyze_errors(y_true: np.ndarray,
     return records
 
 
-# -----------------------------------------------------------------------------
-# Aggregation helper for architecture comparison (rubric #89)
-# -----------------------------------------------------------------------------
+# 4. rubric #89  Comparison of multiple architectures (aggregate_results helper)
 def aggregate_results(per_run_metrics: Dict[str, dict], save_path: Path):
     """
-    per_run_metrics = {run_name: {accuracy: ..., macro_f1: ..., ...}, ...}
-    Writes a comparison CSV suitable for dropping into the README.
+    the per_run_metrics = {run_name: {accuracy: ..., macro_f1: ..., ...}, ...}
+    We write a comparison CSV to have in the Readme
     """
     df = pd.DataFrame(per_run_metrics).T
     df.index.name = "run"
