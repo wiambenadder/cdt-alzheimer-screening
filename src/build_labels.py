@@ -1,10 +1,7 @@
 """
-Build a unified labels.csv from multiple NHATS rounds.
-
-NHATS ships one SAS file per round (NHATS_Round_N_SP_File.sas7bdat) and
-one folder of clock-drawing TIFFs per round. Each round's clock score
-lives in a column named `cgNdclkdraw` (e.g. `cg1dclkdraw`, `cg11dclkdraw`).
-The score is an ordinal 0..5 where:
+NHATS has one SAS file per round (NHATS_Round_N_SP_File.sas7bdat) and one folder of
+clock-drawing TIFFs per round. Each round's clock score is in a column named
+cgNdclkdraw (e.g., cg1dclkdraw, cg11dclkdraw). The score is from 0 to 5:
 
     0 = Not recognizable as a clock
     1 = Severely distorted
@@ -13,18 +10,18 @@ The score is an ordinal 0..5 where:
     4 = Reasonably accurate
     5 = Accurate (circular or square)
 
-Negative values (-1, -4, -7, -9) are NHATS missing-data codes and are
+Negative values (-1, -4, -7, -9) are missing-data codes and they are
 dropped.
 
-This script:
-  * iterates every round folder found under nhats_raw/
+This file does:
+  * iterate every round folder found in nhats_raw/
   * loads the matching SAS file from sas_files/
   * extracts (participant_id, cdt_score) per round
   * joins with TIFFs found on disk so we only keep images we actually have
   * writes a single labels.csv with columns:
         round, participant_id, cdt_score, image_path
 
-It's safe to re-run — it will skip rounds with no SAS file and report
+It's safe to re-run. It skips rounds with no SAS file and reports
 what's missing.
 """
 from __future__ import annotations
@@ -36,21 +33,18 @@ from typing import Optional
 import pandas as pd
 
 
-# --- Paths (override these from a notebook via build_labels(...)) ------------
+# Paths 
 DEFAULT_SAS_DIR = Path('/content/drive/MyDrive/cdt-data/sas_files')
 DEFAULT_TIF_DIR = Path('/content/drive/MyDrive/cdt-data/nhats_raw')
 DEFAULT_OUTPUT  = Path('/content/drive/MyDrive/cdt-data/labels.csv')
 
-
-# ---------------------------------------------------------------------------
 # Helpers
-# ---------------------------------------------------------------------------
 def find_sas_file(sas_dir: Path, round_num: int) -> Optional[Path]:
     """
-    NHATS SAS filename patterns vary between rounds:
+    NHATS SAS filename has a different pattern between rounds:
       NHATS_Round_1_SP_File.sas7bdat
       NHATS_Round_11_SP_File_V2.sas7bdat
-    We match loosely: contains 'Round_<N>' and 'SP_File' and ends .sas7bdat.
+    So we match loosely: contains 'Round_<N>' and 'SP_File' and ends .sas7bdat.
     """
     pattern = re.compile(
         rf'NHATS_Round_{round_num}_SP_File.*\.sas7bdat$', re.IGNORECASE,
@@ -58,7 +52,7 @@ def find_sas_file(sas_dir: Path, round_num: int) -> Optional[Path]:
     matches = [p for p in sas_dir.glob('*.sas7bdat') if pattern.search(p.name)]
     if not matches:
         return None
-    # prefer the _V2 file if multiple versions exist
+    # have the _V2 file preferance if multiple versions exist
     matches.sort(key=lambda p: ('_V2' not in p.name, p.name))
     return matches[0]
 
@@ -75,11 +69,11 @@ def _read_sas_robust(sas_path: Path) -> pd.DataFrame:
     NHATS SAS files are inconsistently encoded across rounds. Some use
     UTF-8, others use Latin-1 / Windows-1252.
 
-    We try pyreadstat first (it handles mixed encoding gracefully via the
-    'encoding' parameter at the C level) and fall back to pandas if
-    pyreadstat is missing. pyreadstat is preinstalled on Colab/Kaggle.
+    We try pyreadstat first (it handles mixed encodingusing the
+    'encoding' parameter at the C level) and then fall back to pandas if
+    pyreadstat is missing. pyreadstat is preinstalled on Colab.
     """
-    # --- preferred path: pyreadstat ---
+    # prefered: pyreadstat 
     try:
         import pyreadstat
         for enc in ('utf-8', 'latin-1', 'cp1252', 'windows-1252'):
@@ -91,17 +85,14 @@ def _read_sas_robust(sas_path: Path) -> pd.DataFrame:
             except (UnicodeDecodeError, pyreadstat.ReadstatError) as e:
                 last_err = e
                 continue
-        # last resort: no encoding (reads bytes; numerics still work)
+        # to have as a last resort:
         df, _meta = pyreadstat.read_sas7bdat(str(sas_path))
         return df
     except ImportError:
-        pass  # fall through to pandas
+        pass  # this falls through to pandas
 
-    # --- fallback: pandas with iterator-safe encoding ---
     for enc in ('latin-1', 'cp1252', 'utf-8'):
         try:
-            # IMPORTANT: materialize fully inside the try so decoding errors
-            # during iteration (not just during header read) are caught
             df = pd.read_sas(sas_path, format='sas7bdat', encoding=enc)
             _ = df.shape   # force full read
             return df
@@ -115,7 +106,7 @@ def _read_sas_robust(sas_path: Path) -> pd.DataFrame:
 def extract_one_round(sas_path: Path, tif_dir: Path, round_num: int
                       ) -> pd.DataFrame:
     """
-    Returns a dataframe with columns [round, participant_id, cdt_score, image_path]
+    This is to return a dataframe with columns [round, participant_id, cdt_score, image_path]
     for a single round. Rows with missing scores or missing TIFFs are dropped.
     """
     score_col = f'cg{round_num}dclkdraw'
@@ -134,15 +125,15 @@ def extract_one_round(sas_path: Path, tif_dir: Path, round_num: int
     sub = df[[spid_col, score_col]].copy()
     sub.columns = ['participant_id', 'cdt_score']
 
-    # drop NaNs and NHATS missing codes
+    # we drop NaNs and NHATS missing codes
     sub = sub.dropna(subset=['cdt_score'])
     sub = sub[sub['cdt_score'].between(0, 5)]
     sub['cdt_score'] = sub['cdt_score'].astype(int)
 
-    # SPID often comes back as float from pandas.read_sas — clean to string
+    # SPID often comes back as float from pandas.read_sas, we clean to string
     sub['participant_id'] = sub['participant_id'].astype('Int64').astype(str)
 
-    # match against TIFFs actually on disk
+    # we match against TIFFs actually on disk
     tifs_on_disk = {p.stem: p for p in tif_dir.glob('*.tif')}
     tifs_on_disk.update({p.stem: p for p in tif_dir.glob('*.TIF')})  # just in case
     sub['image_path'] = sub['participant_id'].map(
@@ -158,9 +149,8 @@ def extract_one_round(sas_path: Path, tif_dir: Path, round_num: int
     return sub[['round', 'participant_id', 'cdt_score', 'image_path']]
 
 
-# ---------------------------------------------------------------------------
-# Main entry point
-# ---------------------------------------------------------------------------
+
+# entry point
 def build_labels(
     sas_dir: Path = DEFAULT_SAS_DIR,
     tif_dir: Path = DEFAULT_TIF_DIR,
@@ -168,11 +158,8 @@ def build_labels(
     rounds: Optional[list[int]] = None,
 ) -> pd.DataFrame:
     """
-    Walk every round subfolder under tif_dir, find its SAS file, extract
-    and merge labels. Writes labels.csv and returns the combined df.
-
-    If rounds is None, auto-detects by looking for folders named
-    round_01, round_02, ...
+    We go through every round subfolder under tif_dir, find its SAS file, extract
+    and merge labels. It writes labels.csv and returns the combined df.
     """
     sas_dir = Path(sas_dir)
     tif_dir = Path(tif_dir)
@@ -209,7 +196,7 @@ def build_labels(
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(output_csv, index=False)
 
-    # --- Summary ---
+    # Summary of what was done
     print('\n' + '=' * 60)
     print(f'[ok] wrote {len(combined):,} labels to {output_csv}')
     print('=' * 60)
