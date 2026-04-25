@@ -1,16 +1,15 @@
 """
-Grad-CAM visualization of what convolutional models attend to.
+This file has the code for the Grad-CAM visualization of what convolutional models take care of.
 
-Rubric item this file supports:
-  - #94 Interpretable model design / explainability analysis (7 pts)
+This supports the rubric #94:
+  - Interpretable model design and explainability analysis 
 
-Grad-CAM works on CNNs by weighting activation maps of a chosen conv
-layer by the gradient of the target class wrt those activations. The
-resulting heatmap shows which spatial regions most increased the
-predicted class logit.
+Grad-CAM works on CNNs by weighting activation maps of a chosen convolutional
+layer by the gradient of the target class with respect to those activations. The
+heatmap shows which spatial regions most increased the predicted class logit.
 
-For the Vision Transformer we use attention rollout instead (see
-attention_rollout()) since ViT has no convolutional layers.
+For the Vision Transformer we use attention rollout instead because
+ViT has no convolutional layers.
 """
 from typing import Tuple, Optional
 import torch
@@ -20,12 +19,10 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 
-# -----------------------------------------------------------------------------
-# Grad-CAM for CNN backbones
-# -----------------------------------------------------------------------------
+# GradCam
 class GradCAM:
     """
-    Hooks into a target conv layer, captures activations (forward) and
+    This hooks into a target convolutional layer, records the activations (forward) and
     gradients (backward), then produces a class-discriminative heatmap.
     """
 
@@ -41,17 +38,16 @@ class GradCAM:
         self.activations = out.detach()
 
     def _save_gradient(self, module, grad_in, grad_out):
-        # grad_out is a tuple; element 0 is dL/d(output)
         self.gradients = grad_out[0].detach()
 
     def __call__(self, x: torch.Tensor, class_idx: Optional[int] = None
                  ) -> Tuple[np.ndarray, int]:
         """
         x: [1, 3, H, W] image tensor (already normalized)
-        Returns (cam_HxW in [0,1] numpy, class_idx used).
+        It returns (cam_HxW in [0,1] numpy, class_idx used).
         """
         self.model.eval()
-        # enable grads even if model is in eval mode
+        # this enable grads even if model is in evaluation mode
         x = x.clone().detach().requires_grad_(True)
         logits = self.model(x)
         if class_idx is None:
@@ -73,7 +69,7 @@ class GradCAM:
 
 def overlay_cam_on_image(pil_img: Image.Image, cam: np.ndarray,
                          alpha: float = 0.4, title: str = "") -> plt.Figure:
-    """Resize cam to image size and overlay as a jet-colored heatmap."""
+    """This resize cam to image size and overlay as a jet-colored heatmap."""
     cam_resized = np.array(
         Image.fromarray((cam * 255).astype(np.uint8))
              .resize(pil_img.size, Image.BILINEAR)
@@ -87,34 +83,31 @@ def overlay_cam_on_image(pil_img: Image.Image, cam: np.ndarray,
     return fig
 
 
-# -----------------------------------------------------------------------------
-# Attention rollout for ViT
-# -----------------------------------------------------------------------------
+# Attention rollout for vit
 @torch.no_grad()
 def attention_rollout(vit_model, x: torch.Tensor,
                       discard_ratio: float = 0.9) -> np.ndarray:
     """
-    Attention rollout (Abnar & Zuidema, 2020). Multiplies averaged attention
-    matrices across layers to get a single "attention map from [CLS] to
-    patches." Works with torchvision's vit_b_16.
+    The attention rollout (Abnar & Zuidema, 2020) multiplies the averaged attention
+    matrices across the layers to get a single "attention map from [CLS] to
+    the patches." Works with torchvision's vit_b_16.
 
-    Returns a [H_patch, W_patch] numpy map normalized to [0, 1].
+    It returns a [H_patch, W_patch] numpy map normalized to [0, 1].
     """
     attentions = []
 
     def hook(module, inp, out):
-        # torchvision's MultiheadAttention returns (output, attn_weights).
+        # the torchvision's MultiheadAttention returns (output, attn_weights).
         # We need to force need_weights=True, so we monkey-patch the forward.
         pass
 
-    # torchvision's ViT self-attention blocks store attention via F.scaled_dot_product_attention
-    # which does NOT expose weights. Cleanest path: re-implement the forward with hooks,
-    # or run patch-level occlusion. For simplicity we provide an occlusion-based
+    # torchvision's ViT self-attention blocks store attention using F.scaled_dot_product_attention
+    # which does NOT expose weights. The cleanest path is to re-implement the forward with hooks,
+    # or run patch-level occlusion. To make this simple we provide an occlusion-based
     # attribution as a ViT-compatible alternative below.
     raise NotImplementedError(
-        "Attention rollout on torchvision ViT needs custom attention access. "
-        "Use `vit_occlusion_map(model, x)` for a ViT interpretability method "
-        "that works out of the box."
+        "The attention rollout on torchvision ViT needs custom attention access. "
+        "We use `vit_occlusion_map(model, x)` for a ViT interpretability method "
     )
 
 
@@ -122,7 +115,7 @@ def attention_rollout(vit_model, x: torch.Tensor,
 def vit_occlusion_map(model, x: torch.Tensor, patch_size: int = 16,
                       class_idx: Optional[int] = None) -> np.ndarray:
     """
-    Occlusion-based interpretability for ViT: slide a gray patch over the
+    The occlusion-based interpretability for ViT: we slide a gray patch over the
     image and measure how much the target-class logit drops. A big drop
     means that patch was important for the prediction.
 
@@ -143,7 +136,7 @@ def vit_occlusion_map(model, x: torch.Tensor, patch_size: int = 16,
     for i in range(n_h):
         for j in range(n_w):
             x_occ = x.clone()
-            # gray patch in normalized space (~0 after normalization)
+            # gray patch in normalized space 
             x_occ[:, :,
                   i*patch_size:(i+1)*patch_size,
                   j*patch_size:(j+1)*patch_size] = 0.0
