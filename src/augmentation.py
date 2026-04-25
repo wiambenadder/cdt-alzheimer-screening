@@ -1,4 +1,4 @@
-# Preprocessing with edge-stripping crop for the NHATS page scans
+# This is for the preprocessing with edge-stripping crop for the NHATS page scans
 import numpy as np
 from PIL import Image
 from torchvision import transforms
