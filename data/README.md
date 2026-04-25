@@ -45,7 +45,7 @@ I then created a cleaned `labels.csv` file that links each participant ID to a C
 ## How to get the data
 
 1. Request access to NHATS data from the official NHATS researcher data portal:
-   https://nhats.org/researcher/data-access/public-use-files
+   [https://nhats.org/researcher/data-access/public-use-files](https://nhats.org/researcher/data-access/public-use-files)
 2. Download the clock drawing image files for the rounds you want to use.
 3. Download the matching NHATS SAS/SP files that contain the variables to build labels.
 4. Place the image folders inside `data/nhats_raw/`.
