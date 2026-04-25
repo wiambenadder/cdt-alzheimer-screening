@@ -1,43 +1,71 @@
 # Data
 
-This directory holds the NHATS Clock Drawing Test data. The actual images and
-labels are **not committed to git** (they are gitignored in `.gitignore`) both
-because NHATS data requires a data-use agreement and because ~40K TIFF images
-would blow up the repo.
+This folder is for the NHATS Clock Drawing Test data used in this project.
 
-## Expected layout
+The real NHATS images and label files are **not stored in this GitHub repo**. They are ignored with `.gitignore` because:
 
-```
+1. NHATS data is shared under a data-use agreement.
+2. The full image dataset is very large and would make the repo too big.
+
+## The layout
+
+```text
 data/
   nhats_raw/
-    <participant_id_1>.tif
-    <participant_id_2>.tif
+    round_01/
+      40016109.tif
+      ...
+    round_02/
+      ...
     ...
-  labels.csv                    # participant_id, cdt_score (0-5)
-  sample_labels.csv             # tiny synthetic sample for smoke testing
+    round_14/
+      ...
+  sas_files/
+    NHATS_Round_14_SP_File.sas7bdat
+    ...
+  labels.csv
+  sample_labels.csv
 ```
 
-## How to obtain NHATS CDT data
+## What each part contains
 
-1. Go to https://nhats.org/researcher/data-access/public-use-files
-2. Create an account and accept the data-use agreement (free, same-day)
-3. Download CDT image files for the rounds you want (rounds 1-9 span 2011-2019)
-4. Download the corresponding Sensitive Demographic File / questionnaire files
-   containing the CDT score variable.
+- `nhats_raw/` includes the raw clock drawing images.
+- Each `round_XX/` folder consists of `.tif` files for that NHATS round.
+- Image files are named with the participant ID, for example `40016109.tif`.
+- `sas_files/` contains the NHATS SAS data files, such as `NHATS_Round_14_SP_File.sas7bdat`.
+- `labels.csv` is the processed label file used by the training pipeline.
+- `sample_labels.csv` can be used for quick smoke tests without the full dataset.
 
-## Label column names
+## How I organized the data
 
-The NHATS variable naming convention is round-specific. Typical names you may
-encounter include:
+I kept the raw NHATS images in Google Drive inside `nhats_raw/`, grouped by round.
+I kept the original NHATS SAS files in a separate `sas_files/` folder.
+I then created a cleaned `labels.csv` file that links each participant ID to a CDT score and image path for training.
 
-- `HC1DISECG` - clock drawing executive composite (older rounds)
-- `CG1DCLOCKSCORE` - clock drawing score
-- similar round-2..9 variants
+## How to get the data
 
-Inspect your downloaded CSV in the `01_data_exploration` notebook and update
-`src/config.py` or pass the real column name to `load_labels()`.
+1. Request access to NHATS data from the official NHATS researcher data portal:
+   https://nhats.org/researcher/data-access/public-use-files
+2. Download the clock drawing image files for the rounds you want to use.
+3. Download the matching NHATS SAS/SP files that contain the variables to build labels.
+4. Place the image folders inside `data/nhats_raw/`.
+5. Place the SAS files inside `data/sas_files/`.
+6. Build or copy `labels.csv` so it includes the columns used by this project.
+
+## Labels used in this project
+
+The main label file used by the pipeline is `labels.csv`.
+
+It should contain these columns:
+
+- `participant_id`
+- `cdt_score`
+- `image_path`
+
+In this project, the model predicts CDT score from 0 to 5.
 
 ## Privacy and ethics
 
-Clock drawings are de-identified in NHATS releases - only a participant ID
-links images to scores. Do not commit the raw data to a public git repo.
+NHATS data should not be uploaded to a public repository.
+Please keep the raw images, SAS files, and any derived label files in private storage such as Google Drive or local disk only.
+
