@@ -1,4 +1,4 @@
-"""Preprocessing with aggressive edge-stripping crop for NHATS full-page scans."""
+# Preprocessing with edge-stripping crop for the NHATS page scans
 import numpy as np
 from PIL import Image
 from torchvision import transforms
@@ -10,9 +10,9 @@ IMAGENET_STD = [0.229, 0.224, 0.225]
 
 class SmartCropClock:
     """
-    Two-stage crop for NHATS scans:
-      Stage 1: aggressively strip outer 15% of each edge to kill scanner bars
-      Stage 2: within the inner region, find largest connected dark region
+    We have 2 stages:
+      Stage 1: we strip the outer 15% of each edge to remove the scanner bars
+      Stage 2: within the inner region, we find the largest connected dark region
                (the clock) using dilation + component labeling, not just bbox
     """
 
@@ -28,24 +28,24 @@ class SmartCropClock:
         arr = np.array(gray)
         H, W = arr.shape
 
-        # Stage 1: strip the aggressive outer margin (kills scanner bars)
+        # Stage 1: we strip the outer 15% of each edge to remove the scanner bars
         ex = int(W * self.edge_strip_frac)
         ey = int(H * self.edge_strip_frac)
         inner = arr[ey:H - ey, ex:W - ex]
 
         dark = inner < self.threshold
         if dark.sum() < 100:
-            # no meaningful content found, return center crop
+            # if no meaningful content is there, we return center crop
             side = min(H, W)
             y0 = (H - side) // 2; x0 = (W - side) // 2
             return img.crop((x0, y0, x0 + side, y0 + side))
 
-        # Stage 2: find the largest connected dark component (= the clock)
-        # Use simple 1D density projection — where along each axis is most ink?
+        # Stage 2: we find the largest connected dark component 
+        # we use 1D density projection, to answer: where along each axis is most ink?
         row_density = dark.sum(axis=1)
         col_density = dark.sum(axis=0)
 
-        # Find rows/cols that contain >5% of max density (ignore noise specks)
+        # we find the rows/cols that contain >5% of max density 
         row_thresh = max(5, row_density.max() * 0.05)
         col_thresh = max(5, col_density.max() * 0.05)
         dense_rows = np.where(row_density > row_thresh)[0]
@@ -59,20 +59,20 @@ class SmartCropClock:
         x0 = dense_cols.min() + ex
         x1 = dense_cols.max() + ex
 
-        # Sanity check
+        # just to check
         if (y1 - y0) * (x1 - x0) < self.min_box_frac * H * W:
             side = min(H, W)
             y0c = (H - side) // 2; x0c = (W - side) // 2
             return img.crop((x0c, y0c, x0c + side, y0c + side))
 
-        # Small margin
+        # some small margin
         bh, bw = y1 - y0, x1 - x0
         mh = int(bh * self.margin_frac)
         mw = int(bw * self.margin_frac)
         y0 = max(0, y0 - mh); y1 = min(H, y1 + mh)
         x0 = max(0, x0 - mw); x1 = min(W, x1 + mw)
 
-        # Make square
+        # we make it square
         cy = (y0 + y1) // 2
         cx = (x0 + x1) // 2
         side = max(y1 - y0, x1 - x0)
@@ -82,7 +82,10 @@ class SmartCropClock:
 
         return img.crop((x0, y0, x1, y1))
 
-
+# this creates the image preprocessing pipeline for training
+# by applying the SmartCropClock to isolate the clock region, resizes to the target size, 
+# adds augmentations like rotation and color jitter, converts to grayscale tensor, normalizes 
+# using ImageNet statistics, and applies random erasing.
 def build_train_transform(image_size, aug_cfg, use_aug=True):
     if not use_aug:
         return build_eval_transform(image_size)
@@ -101,6 +104,11 @@ def build_train_transform(image_size, aug_cfg, use_aug=True):
         transforms.RandomErasing(p=aug_cfg.random_erasing_p),
     ])
 
+# this creates the image preprocessing pipeline for validation and testing 
+# it applies SmartCropClock to isolate the clock region, 
+# it resizes to the target size, 
+# it converts to grayscale tensor,
+# normalizes using ImageNet statistics without any data augmentation.
 
 def build_eval_transform(image_size):
     return transforms.Compose([
