@@ -1,4 +1,4 @@
-"""Small helpers: seeding, checkpoint I/O, parameter counting."""
+"""In this file we have some small helpers: seeding, checkpoint I/O, parameter counting."""
 import random
 import numpy as np
 import torch
@@ -8,12 +8,11 @@ from .config import SEED
 
 
 def set_seed(seed: int = SEED):
-    """Seed every RNG that PyTorch touches, for reproducibility."""
+    """The seed for every RNG that PyTorch touches, for reproducibility."""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
-    # deterministic cudnn hurts speed; flip off if runs are too slow
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
