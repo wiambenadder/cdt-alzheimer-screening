@@ -17,11 +17,11 @@ https://www.nature.com/articles/s41598-025-34064-6
 
 This project develops a vision-based screening tool for cognitive impairment by 
 training deep learning models on Clock Drawing Test (CDT) images drawn from the 
-National Health and Aging Trends Study (NHATS, Rounds 1–14). The CDT has been widely 
-used by clinicians as a standard bedside screen for Alzheimer's disease and related 
-dementias, and our system learns to replicate that same judgment across roughly 
-59,000 hand-drawn clock images, mapping each drawing to a 6-level NHATS impairment 
-score.
+National Health and Aging Trends Study (NHATS, Rounds 1–12 with labels, Rounds 
+1–14 downloaded). The CDT has been widely used by clinicians as a standard 
+bedside screen for Alzheimer's disease and related dementias, and our system 
+learns to replicate that same judgment across roughly 59,000 hand-drawn clock 
+images, mapping each drawing to a 6-level NHATS impairment score.
 
 To find the most effective approach, we fine-tune three well-established pretrained 
 architectures: VGG16, EfficientNet-B0, and ViT-B/16. We evaluate all three across 
