@@ -64,6 +64,17 @@ It should contain these columns:
 
 In this project, the model predicts CDT score from 0 to 5.
 
+## Why rounds 13 and 14 are not in labels.csv
+
+The raw image folders include all 14 rounds because the NHATS clock drawing 
+images were downloaded for every available round. However, NHATS changed the 
+CDT score variable structure starting in round 13, so the same variable name 
+used in rounds 1 through 12 does not exist in the round 13 and 14 SAS files. 
+Because of this, labels.csv only contains the 59,417 clock drawings from 
+rounds 1 through 12 where a consistent CDT score could be extracted. The 
+round 13 and round 14 image files are present in nhats_raw/ but have no 
+matching labels and are never loaded by the training pipeline.
+
 ## Privacy and ethics
 
 NHATS data should not be uploaded to a public repository.
