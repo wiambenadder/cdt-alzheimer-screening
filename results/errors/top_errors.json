@@ -1,0 +1,98 @@
+[
+  {
+    "image_path": "/content/nhats_local/round_12/10005226.tif",
+    "true_label": 1,
+    "pred_label": 0,
+    "pred_confidence": 0.996119499206543,
+    "prob_for_true_class": 0.00382274785079062,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_07/10006988.tif",
+    "true_label": 3,
+    "pred_label": 1,
+    "pred_confidence": 0.988241970539093,
+    "prob_for_true_class": 0.0006061861058697104,
+    "ordinal_distance": 2
+  },
+  {
+    "image_path": "/content/nhats_local/round_06/20005078.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.9827094078063965,
+    "prob_for_true_class": 0.013761196285486221,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_07/20004271.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.9812793731689453,
+    "prob_for_true_class": 0.014259615913033485,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_07/10012150.tif",
+    "true_label": 2,
+    "pred_label": 3,
+    "pred_confidence": 0.9760929346084595,
+    "prob_for_true_class": 0.02081926353275776,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_09/10003567.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.976035475730896,
+    "prob_for_true_class": 0.01983444020152092,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_09/10000864.tif",
+    "true_label": 1,
+    "pred_label": 2,
+    "pred_confidence": 0.9737870693206787,
+    "prob_for_true_class": 0.007358578499406576,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_09/20006848.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.973282516002655,
+    "prob_for_true_class": 0.014615745283663273,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_08/10002462.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.9709185361862183,
+    "prob_for_true_class": 0.011785382404923439,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_04/10011155.tif",
+    "true_label": 0,
+    "pred_label": 1,
+    "pred_confidence": 0.9703524708747864,
+    "prob_for_true_class": 0.017364932224154472,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_10/10001905.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.9698096513748169,
+    "prob_for_true_class": 0.01151332538574934,
+    "ordinal_distance": 1
+  },
+  {
+    "image_path": "/content/nhats_local/round_09/20000284.tif",
+    "true_label": 3,
+    "pred_label": 2,
+    "pred_confidence": 0.9695745706558228,
+    "prob_for_true_class": 0.022515030577778816,
+    "ordinal_distance": 1
+  }
+]
