@@ -139,10 +139,10 @@ benefits the model when the backbone is free to adapt to it.
 
 | File | Description |
 |---|---|
-| `docs/results/vit_confusion_matrix_normalized.png` | Normalized per-class confusion matrix for ViT-B/16 |
-| `docs/results/vit_attribution_maps.png` | Patch occlusion attribution maps for all 6 CDT classes |
-| `docs/results/errors/` | 12 most confidently misclassified clock images |
-| `docs/results/all_results.csv` | All experiment results sorted by quadratic kappa |
+| `results/vit_confusion_matrix_normalized.png` | Normalized per-class confusion matrix |
+| `results/vit_attribution_maps.png` | Patch occlusion attribution maps for all 6 CDT classes |
+| `results/errors/` | 12 most confidently misclassified clock images |
+| `results/all_results.csv` | All experiment results sorted by quadratic kappa |
 
 ### Data Challenges Addressed
 
