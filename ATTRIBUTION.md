@@ -99,6 +99,13 @@ This project used AI coding assistants (Claude Code) during development.
 All core design decisions were made independently: the participant-disjoint split design,
 the SmartCropClock algorithm, the choice to use GroupShuffleSplit on participant_id,
 the architecture selection, the metric choices, and all result interpretation.
+
+### Self-assessment document
+
+The self-assessment .docx structure and evidence were drafted with the assistance
+of Claude. All factual claims, code references, and result numbers were verified by me
+against the actual notebook outputs before submission.
+
 ---
 
 ## What I Modified, Fixed, and Modified
