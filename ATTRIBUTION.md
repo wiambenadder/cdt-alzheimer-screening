@@ -82,7 +82,6 @@ This project used AI coding assistants (Claude Code) during development.
 
 | Task | Used AI |
 |---|---|
-| Debugging code related errors (scheduler ordering, AMP deprecation warnings) | Yes |
 | Debugging scheduler ordering | Claude identified that scheduler.step() was being called before optimizer.step(), which causes PyTorch to skip the first LR value. I verified the fix and updated src/train.py. |
 | Debugging AMP deprecation warnings | Claude suggested updating torch.cuda.amp.autocast to torch.amp.autocast and similarly for GradScaler. I tested that the updated calls produced the same training behavior. |
 | Grammar and documentation phrasing | Claude reviewed README and ATTRIBUTION.md for grammar. All technical decisions and result interpretations are my own. |
@@ -94,7 +93,7 @@ This project used AI coding assistants (Claude Code) during development.
 | Data exploration findings and decision-making (SmartCropClock design, class imbalance strategy, participant-disjoint split) | No |
 | Designing the core experimental methodology (architecture choices, split design, metric selection) | No |
 | Interpreting results or writing the technical analysis | No |
-| Documentation drafting | No |
+| Core technical documentation drafting | No |
 
 All core design decisions were made independently: the participant-disjoint split design,
 the SmartCropClock algorithm, the choice to use GroupShuffleSplit on participant_id,
@@ -108,7 +107,7 @@ against the actual notebook outputs before submission.
 
 ---
 
-## What I Modified, Fixed, and Modified
+## What I Modified and Fixed
 
 ### Participant-Disjoint Split (`src/data.py`)
 
