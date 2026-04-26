@@ -1,6 +1,6 @@
 # Notebooks
 
-Run these in order. Each writes its outputs to `docs/results/<run_name>/` and
+Run these in order. Each writes its outputs to `results/<run_name>/` and
 trained weights to `models/`. Between notebooks you can kill the kernel - all
 state is persisted to disk.
 
