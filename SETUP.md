@@ -14,7 +14,7 @@ the project. Estimated setup time: 10-15 minutes.
 ## 2. Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/cdt-alzheimer-screening.git
+git clone https://github.com/wiambenadder/cdt-alzheimer-screening.git
 cd cdt-alzheimer-screening
 ```
 
@@ -56,10 +56,17 @@ Place files as follows:
 ```
 data/
   nhats_raw/
-    <participant_id_1>.tif
-    <participant_id_2>.tif
+    round_01/
+      <participant_id>.tif
+    round_02/
+      ...
+    round_12/
+      ...
+  sas_files/
+    NHATS_Round_1_SP_File.sas7bdat
     ...
   labels.csv
+  sample_labels.csv
 ```
 
 The labels CSV should have columns `participant_id` and `cdt_score` (0-5).
