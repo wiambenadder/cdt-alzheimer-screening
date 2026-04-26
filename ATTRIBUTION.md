@@ -137,4 +137,4 @@ The LR scheduler was originally being called before `optimizer.step()`, which ca
 
 ### Extended Dataset Scope
 
-Hu et al. (2026) used only Rounds 1–9 and applied a quality filter, utilizing 24,991 images. This project uses all available Rounds 1–14 with minimal filtering, resulting in 59,417 images, which is 2.4 times more training data. Rounds 13 and 14 have a different CDT variable structure because NHATS changed their annotation workflow in those rounds. This is documented in `notebooks/01_data_exploration.ipynb`.
+Hu et al. (2026) used only Rounds 1 through 9 and applied a quality filter, which resulted in 24,991 images. This project uses all available Rounds 1 through 12 with minimal filtering, resulting in 59,417 images, which is 2.4 times more training data. Rounds 13 and 14 were downloaded but not used because NHATS changed their CDT variable structure and annotation workflow starting in those rounds, making them incompatible with the earlier rounds. This is documented in notebooks/01_data_exploration.ipynb.
