@@ -172,14 +172,16 @@ cdt-alzheimer-screening/
     evaluate.py        metrics, confusion matrix, error cases, timing
     gradcam.py         Grad-CAM (CNN) and patch occlusion maps (ViT)
     utils.py           seeding, checkpoint I/O, device selection
+    build_labels.py    to build the labels 
+    verify.py           verification
   data/                gitignored; see data/README.md for layout + NHATS access
   models/              gitignored checkpoints
   notebooks/
     01_data_exploration.ipynb
     02_baseline.ipynb
     03_finetuning.ipynb
-    04_evaluation.ipynb
-    05_gradcam.ipynb
+    04_ablation.ipynb
+    05_error_analysis.ipynb
   videos/              demo + technical walkthrough
   docs/
     rubric_mapping.md
