@@ -51,9 +51,9 @@ this task.
 
 Both VGG16 and ResNet101 are fully supervised, ImageNet-pretrained CNN backbones used 
 strictly through fine-tuning. The paper's main conclusion that ViT performs at least 
-as well as CNNs on CDT scoring reamins true regardless of which specific CNN fills 
+as well as CNNs on CDT scoring remains true regardless of which specific CNN fills 
 the baseline role. Replacing one with another is a standard practice in ablation-style 
-comparisons and does not uweaken the validity of the results.
+comparisons and does not weaken the validity of the results.
 
 ## Quick Start
 
@@ -72,8 +72,8 @@ pip install -r requirements.txt
 # 3. run experiments (Colab: open numbered notebooks in order)
 jupyter nbconvert --to notebook --execute notebooks/02_baseline.ipynb
 jupyter nbconvert --to notebook --execute notebooks/03_finetuning.ipynb
-jupyter nbconvert --to notebook --execute notebooks/04_evaluation.ipynb
-jupyter nbconvert --to notebook --execute notebooks/05_gradcam.ipynb
+jupyter nbconvert --to notebook --execute notebooks/04_ablation.ipynb
+jupyter nbconvert --to notebook --execute notebooks/05_error_analysis.ipynb
 ```
 
 Jupyter-first alternative: open `notebooks/01_data_exploration.ipynb` and
@@ -139,9 +139,10 @@ benefits the model when the backbone is free to adapt to it.
 
 | File | Description |
 |---|---|
-| `docs/results/<run>/confusion_matrix.png` | Per-class confusion matrix |
-| `docs/results/<run>/top_errors.png` | 12 most confidently misclassified clocks |
-| `docs/results/<run>/gradcam_examples.png` | Grad-CAM overlays: correct vs. wrong predictions |
+| `docs/results/vit_confusion_matrix_normalized.png` | Normalized per-class confusion matrix for ViT-B/16 |
+| `docs/results/vit_attribution_maps.png` | Patch occlusion attribution maps for all 6 CDT classes |
+| `docs/results/errors/` | 12 most confidently misclassified clock images |
+| `docs/results/all_results.csv` | All experiment results sorted by quadratic kappa |
 
 ### Data Challenges Addressed
 
