@@ -1,0 +1,17 @@
+{
+  "majority_class": {
+    "accuracy": 0.36979692583866264,
+    "macro_f1": 0.08998826002675621,
+    "weighted_f1": 0.19966429151678794,
+    "quadratic_kappa": 0.0
+  },
+  "vgg16_frozen": {
+    "accuracy": 0.45416806911253227,
+    "macro_f1": 0.415561634141224,
+    "weighted_f1": 0.44867533753420613,
+    "macro_precision": 0.4218735312997777,
+    "macro_recall": 0.4250675950810081,
+    "quadratic_kappa": 0.6368116548100001,
+    "macro_auc": 0.8001114487206262
+  }
+}

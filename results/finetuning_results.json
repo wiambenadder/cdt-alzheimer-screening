@@ -1,0 +1,38 @@
+{
+  "vgg16_ft": {
+    "accuracy": 0.6160214813157305,
+    "macro_f1": 0.5842349264284372,
+    "weighted_f1": 0.611970449141383,
+    "macro_precision": 0.5765624076261199,
+    "macro_recall": 0.6042648981586608,
+    "quadratic_kappa": 0.7813349786317518,
+    "macro_auc": 0.9026010326427433,
+    "run_name": "vgg16_ft",
+    "best_epoch": 6,
+    "note": "trained 8 epochs, stopped manually for time budget"
+  },
+  "effb0_ft": {
+    "accuracy": 0.5895054822107854,
+    "macro_f1": 0.5493392989983227,
+    "weighted_f1": 0.586668877384202,
+    "macro_precision": 0.5360601087117595,
+    "macro_recall": 0.583421318895923,
+    "quadratic_kappa": 0.7465471945279865,
+    "macro_auc": 0.8932002441375296,
+    "run_name": "effb0_ft",
+    "best_epoch": 7,
+    "minutes": 150.4135691245397
+  },
+  "vit_b16_ft": {
+    "accuracy": 0.671850525844708,
+    "macro_f1": 0.6483722009825265,
+    "weighted_f1": 0.6714299063697348,
+    "macro_precision": 0.6328339901983162,
+    "macro_recall": 0.673890432218493,
+    "quadratic_kappa": 0.808468356197879,
+    "macro_auc": 0.9253265860583042,
+    "run_name": "vit_b16_ft",
+    "best_epoch": 5,
+    "minutes": 116.05480935176213
+  }
+}

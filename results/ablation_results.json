@@ -1,0 +1,54 @@
+{
+  "abl_frozen_noaug": {
+    "accuracy": 0.5014544640859253,
+    "macro_f1": 0.49415018490166257,
+    "weighted_f1": 0.49436919320379297,
+    "macro_precision": 0.47004331928339943,
+    "macro_recall": 0.550198989190405,
+    "quadratic_kappa": 0.6670040124964758,
+    "macro_auc": 0.8489141328341961,
+    "run_name": "abl_frozen_noaug",
+    "use_aug": false,
+    "frozen": true,
+    "minutes": 85.03953314224879
+  },
+  "abl_frozen_aug": {
+    "accuracy": 0.46945625419556947,
+    "macro_f1": 0.4715785021275491,
+    "weighted_f1": 0.43417635678080424,
+    "macro_precision": 0.5022183850589601,
+    "macro_recall": 0.501071907691624,
+    "quadratic_kappa": 0.6395138622746077,
+    "macro_auc": 0.8463052049876181,
+    "run_name": "abl_frozen_aug",
+    "use_aug": true,
+    "frozen": true,
+    "minutes": 68.81102378765742
+  },
+  "abl_unfrozen_noaug": {
+    "accuracy": 0.6456701722980532,
+    "macro_f1": 0.6226557433900385,
+    "weighted_f1": 0.642943684815586,
+    "macro_precision": 0.6174481898643659,
+    "macro_recall": 0.6510697098492343,
+    "quadratic_kappa": 0.799166678072593,
+    "macro_auc": 0.9155739484436398,
+    "run_name": "abl_unfrozen_noaug",
+    "use_aug": false,
+    "frozen": false,
+    "minutes": 65.8907848238945
+  },
+  "abl_unfrozen_aug": {
+    "accuracy": 0.6759901543969569,
+    "macro_f1": 0.6554908425639372,
+    "weighted_f1": 0.6753260601904754,
+    "macro_precision": 0.6488927741020435,
+    "macro_recall": 0.6684228227872656,
+    "quadratic_kappa": 0.8116853465199282,
+    "macro_auc": 0.9257243651578636,
+    "run_name": "abl_unfrozen_aug",
+    "use_aug": true,
+    "frozen": false,
+    "minutes": 68.78410400946935
+  }
+}
