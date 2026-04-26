@@ -81,7 +81,7 @@ proceed through the numbered notebooks in order.
 
 ## Video Links
 
-- **Demo video (3-5 min, non-technical pitch):** [INSERT YOUTUBE/DRIVE LINK]  
+- **Demo video (3-5 min, non-technical pitch):** (https://drive.google.com/file/d/1-TJ8hCrk15OeJIB3uw3S0xI8H1pAIgNL/view?usp=drive_link)
 - **Technical walkthrough (5-10 min, for ML engineers):** [INSERT LINK]
 
 Both are also in the `videos/` directory.
