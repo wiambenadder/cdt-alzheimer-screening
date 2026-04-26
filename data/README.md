@@ -64,6 +64,13 @@ It should contain these columns:
 
 In this project, the model predicts CDT score from 0 to 5.
 
+## How labels.csv was created
+
+The CDT score variable in the NHATS SAS files is named `cg2dclkdraw` in rounds 1 through 12.
+The SAS files are read using `pyreadstat` in `notebooks/01_data_exploration.ipynb`,
+which also documents the column name lookup and handles the encoding differences between rounds.
+Rounds 13 and 14 changed their variable structure, so they are excluded from this project.
+
 ## Why rounds 13 and 14 are not in labels.csv
 
 The raw image folders include all 14 rounds because the NHATS clock drawing 
