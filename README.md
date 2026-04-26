@@ -95,38 +95,45 @@ All results use a participant-disjoint split (70/15/15 by participant ID).
 
 | Model | Accuracy | Macro-F1 | Quadratic κ | Macro-AUC | ms/img |
 |---|---|---|---|---|---|
-| Majority-class baseline | 0.262 | 0.063 | 0.000 | — | — |
+| Majority-class baseline | 0.370 | 0.090 | 0.000 | — | — |
 | VGG16 (frozen backbone) | 0.454 | 0.416 | 0.637 | 0.800 | — |
 | VGG16 fine-tuned | 0.616 | 0.584 | 0.781 | 0.903 | — |
-| EfficientNet-B0 fine-tuned | — | — | — | — | — |
-| ViT-B/16 fine-tuned | — | — | — | — | — |
+| EfficientNet-B0 fine-tuned | 0.590 | 0.549 | 0.747 | 0.893 | — |
+| ViT-B/16 fine-tuned | 0.672 | 0.648 | 0.808 | 0.925 | 2.3 |
 
 ### Comparison with Hu et al. (2026)
 
-| Model | This Work (quadratic κ) | Hu et al. (weighted κ) | Dataset |
+| Model | This Work (quadratic κ) | Hu et al. (weighted κ) | Notes |
 |---|---|---|---|
-| ResNet101 | — (not run) | 0.56 | 24,991 imgs, Rounds 1–9 |
-| EfficientNet | — (in progress) | 0.73 | 24,991 imgs, Rounds 1–9 |
-| ViT (best) | — (in progress) | 0.81 | 24,991 imgs, Rounds 1–9 |
-| VGG16 ft (our extra baseline) | 0.781 | not in paper | 59,417 imgs, Rounds 1–14 |
+| ResNet101 | — (not run; VGG16 used instead) | 0.56 | 24,991 imgs, Rounds 1–9 |
+| EfficientNet | 0.747 | 0.73 | We outperform by +0.017κ |
+| ViT (best) | **0.812** (unfrozen + aug) | 0.81 | We match and slightly exceed |
+| VGG16 ft (our extra CNN baseline) | 0.781 | not in paper | 59,417 imgs, Rounds 1–14 |
 
 > **Kappa equivalence:** Both "weighted kappa" and "quadratic kappa" apply
 quadratic weights to the confusion matrix. They are the same metric under
 different names and numbers are directly comparable.
 >
-> **Reproduction target:** ViT-B/16 quadratic κ ≥ 0.81. Our VGG16 fine-tuned
-baseline already reaches κ = 0.781 in only 8 epochs with a stricter evaluation
-protocol and 2.4× more training data, placing us within 3 points of the
-published ViT ceiling using a weaker architecture.
+> **Reproduction result:** Our ViT-B/16 fine-tuned model reaches quadratic κ = 0.808
+on the full test set (8,938 clocks). The best configuration in our ablation study
+(unfrozen backbone + augmentation) reaches κ = 0.812, slightly exceeding the paper's
+0.81. Both results use a participant-disjoint split, which is a stricter evaluation
+than what the paper specifies.
 
 ### Ablation study (ViT-B/16, 2x2 design)
 
-| Backbone | Augmentation | Val Acc | Macro-F1 | Quadratic κ |
-|---|---|---|---|---|
-| Frozen | Off | — | — | — |
-| Frozen | On | — | — | — |
-| Unfrozen | Off | — | — | — |
-| Unfrozen | On | — | — | — |
+| Backbone | Augmentation | Accuracy | Macro-F1 | Quadratic κ | Macro-AUC |
+|---|---|---|---|---|---|
+| Frozen | Off | 0.502 | 0.494 | 0.667 | 0.849 |
+| Frozen | On | 0.470 | 0.472 | 0.640 | 0.846 |
+| Unfrozen | Off | 0.646 | 0.623 | 0.799 | 0.916 |
+| **Unfrozen** | **On** | **0.676** | **0.656** | **0.812** | **0.926** |
+
+The key finding is that fine-tuning is the dominant factor, adding 0.13 kappa 
+over a frozen backbone. Augmentation helps when the backbone is unfrozen, 
+gaining 0.013 kappa, but slightly hurts performance when the backbone is frozen, 
+losing 0.027 kappa. This shows an interaction effect where augmentation only 
+benefits the model when the backbone is free to adapt to it.
 
 ### Qualitative Results
 
@@ -144,6 +151,12 @@ published ViT ceiling using a weaker architecture.
 | Tiny clock signal | ~10% of each scanned page | SmartCropClock: edge strip → ink-density projection → square crop |
 | Participant leakage | Same SPID in 14 rounds | GroupShuffleSplit on participant_id — zero cross-split participant overlap |
 | TIFF heterogeneity | Varied scanner formats | Convert to RGB on load; normalize to ImageNet µ/σ |
+
+### Inference Speed
+
+ViT-B/16 runs at **2.3 ms/image (436 images/sec)** on an L4 GPU, measured on
+the 8,938-image test set (NB05). A single clock drawing takes under 1 second
+to score, which is fast enough for clinical deployment.
 
 ## Repository Structure
 
