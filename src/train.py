@@ -20,7 +20,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR, ReduceLROnPlateau
 from torch.cuda.amp import autocast, GradScaler
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
-
+import os
 from .config import TrainConfig, MODELS_DIR, RESULTS_DIR
 from .models import get_model
 from .utils import set_seed, save_checkpoint, get_device, count_parameters
@@ -157,7 +157,6 @@ def train(model_name: str,
     patience = 0
     history = []
    # to always save to Drive, even if cfg.MODELS_DIR override didn't propagate
-   import os
    _drive_models = "/content/drive/MyDrive/cdt-data/models"
    if os.path.exists("/content/drive/MyDrive/cdt-data"):
        os.makedirs(_drive_models, exist_ok=True)
