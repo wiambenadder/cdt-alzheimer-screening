@@ -12,11 +12,6 @@ state is persisted to disk.
 | 04 | `04_ablation.ipynb` | 2x2 ablation on ViT: {frozen, unfrozen} x {no-aug, aug} | 5 hours |
 | 05 | `05_error_analysis.ipynb` | Load best checkpoint per model, compute all 7 metrics, plot confusion matrices, analyze top-12 errors, generate Grad-CAM + occlusion maps |  1.5 hours |
 
-> **Tip:** If you want the fastest path to a complete submission, run 01
-> (verify your data loads), then 03 with only ViT-B/16, then 05. That gives
-> you one trained model + full evaluation. Come back for 02 (baselines) and
-> 04 (ablation) if you have time.
-
 ## Running on Kaggle or Colab
 
 Both platforms can run these notebooks. A few platform notes:
