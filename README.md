@@ -13,6 +13,31 @@ produces clock drawing test scores as accurate as expert human coders. Scientifi
 Reports, 16, 4032.
 https://www.nature.com/articles/s41598-025-34064-6
 
+## Motivation
+
+Most standard cognitive screening tools, including the MMSE and the MoCA, require 
+reading and writing. In Morocco, 51% of adults over 50 cannot read or write 
+(Morocco World News, 2024). Across the WHO African region, there is fewer than one 
+neurologist per 100,000 people (Naji et al., 2022; Charway-Felli, 2023). For most 
+families in these settings, a diagnosis is not delayed. It simply never comes.
+
+The Clock Drawing Test is different. A doctor hands someone a blank piece of paper 
+and says: draw a clock, put in all the numbers, and set the hands to ten past eleven. 
+No literacy required. No specialist equipment. Under two minutes. Clinicians have 
+used it because it works across languages and educational backgrounds (Hu et al., 2026). 
+The only bottleneck is scoring, which still requires a trained expert.
+
+This project asks whether a computer can learn to do that automatically, from a 
+photograph. We train on nearly 60,000 real clock drawings from the National Health 
+and Aging Trends Study, matching and slightly exceeding the results of the paper we 
+reproduce, with a kappa of 0.812 compared to their 0.81 (Hu et al., 2026). The 
+model scores one image in 2.3 ms, fast enough to run on a phone.
+
+Phones are already in people's hands. Morocco's mobile penetration rate is 159.5% 
+(MeaTechWatch, 2025). The technology to reach families in places far from any 
+hospital already exists. What is missing is the tool. This project is one step 
+toward building it.
+
 ## What it Does
 
 This project develops a vision-based screening tool for cognitive impairment by 
@@ -216,3 +241,16 @@ image recognition. ICLR 2015. https://arxiv.org/abs/1409.1556
 
 Tan, M., & Le, Q. (2019). EfficientNet: Rethinking model scaling for convolutional
 neural networks. ICML 2019. https://arxiv.org/abs/1905.11946
+
+Morocco World News. (2024). Morocco's illiteracy rate stands at 24.8% in 2024.
+https://www.moroccoworldnews.com/2024/12/166863/moroccos-illiteracy-rate-stands-at-24-8-in-2024/
+
+Naji, Y., et al. (2022). Africa's brain specialist shortfall 'risking lives'. SciDev.Net.
+https://www.scidev.net/sub-saharan-africa/news/africas-brain-specialist-shortfall-risking-lives/
+
+Charway-Felli, A. (2023). President of African Academy of Neurology calls for urgent action.
+World Federation of Neurology.
+https://wfneurology.org/activities/news-events/archived-news/2023-10-19-wcn-2
+
+MeaTechWatch. (2025). Morocco's mobile and internet subscriptions cross 100% penetration.
+https://meatechwatch.com/2025/09/01/moroccos-mobile-and-internet-subscriptions-cross-100-penetration-in-2025/
