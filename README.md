@@ -210,7 +210,23 @@ cdt-alzheimer-screening/
   videos/              demo + technical walkthrough
   docs/
     rubric_mapping.md
-    results/           comparison.csv, confusion matrices, figures
+  results/
+    all_results.csv              all 9 experiment results sorted by quadratic kappa
+    ablation_results.json        raw ablation metrics
+    ablation_table.csv           2x2 ablation summary table
+    baselines.json               majority class and frozen VGG16 baseline metrics
+    finetuning_results.json      final metrics for all three fine-tuned models
+    comparison.csv               model comparison summary
+    training_curves.png          VGG16 baseline training curves + final kappa bar chart
+    class_distribution.png       CDT score class distribution across 12 rounds
+    sample_clocks_by_class.png   sample clock drawings for each score class
+    smartcrop_before_after.png   SmartCropClock preprocessing before and after
+    vit_confusion_matrix.png     raw confusion matrix for ViT-B/16
+    vit_confusion_matrix_normalized.png   normalized per-class confusion matrix
+    vit_attribution_maps.png     patch occlusion maps for all 6 CDT classes
+    vit_classification_report.json       per-class precision, recall, F1 for ViT
+    errors/                      12 most confidently misclassified clock images
+    vgg16_frozen_baseline/       training history and TensorBoard logs for baseline run
   requirements.txt
   environment.yml
   SETUP.md
