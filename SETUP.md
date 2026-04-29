@@ -1,16 +1,13 @@
 # Setup Guide
 
 This document provides step-by-step instructions for installing and running
-the project. Estimated setup time: 10 to 15 minutes.
+the project. 
 
 ## 1. Prerequisites
 
 - Python 3.10 or 3.11 (3.12 may also work; development was done on 3.10)
 - pip or conda
 - Around 15 GB of free disk space for the NHATS images and model checkpoints
-- Strongly recommended: a CUDA-capable GPU (NVIDIA T4, L4, or better).
-  Training ViT-B/16 for 25 epochs takes around 45 minutes on a T4 and
-  several hours on CPU.
 
 ## 2. Clone the repository
 
