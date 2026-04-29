@@ -102,11 +102,11 @@ jupyter lab
 
 | Notebook | What it does | Time on T4 |
 |---|---|---|
-| 01_data_exploration.ipynb | Load labels, plot class distribution, view sample clocks | 5 min |
-| 02_baseline.ipynb | Majority-class baseline and VGG16 frozen feature extractor | 15 min |
-| 03_finetuning.ipynb | Fine-tune VGG16, EfficientNet-B0, and ViT-B/16 | 2 to 3 hours |
-| 04_ablation.ipynb | 2x2 ablation: frozen vs unfrozen, no-aug vs aug | 2 hours |
-| 05_error_analysis.ipynb | Confusion matrices, error cases, occlusion maps, timing | 30 min |
+| 01_data_exploration.ipynb | Load labels, plot class distribution, view sample clocks | 15 min |
+| 02_baseline.ipynb | Majority-class baseline and VGG16 frozen feature extractor | 1 hour |
+| 03_finetuning.ipynb | Fine-tune VGG16, EfficientNet-B0, and ViT-B/16 | 10 hours |
+| 04_ablation.ipynb | 2x2 ablation: frozen vs unfrozen, no-aug vs aug | 5 hours |
+| 05_error_analysis.ipynb | Confusion matrices, error cases, occlusion maps, timing | 1.5 hours |
 
 Each notebook saves its outputs to `results/` and model checkpoints to
 `models/<run_name>_best.pt`. Checkpoints are gitignored because they are
