@@ -1,12 +1,6 @@
 """
-Evaluation: metrics, confusion matrix, error analysis, inference timing.
-
-This file satisfies the following rubrics:
-  - 1. rubric #86  inference time / throughput measured
-  - 2. rubric #87  >=3 distinct evaluation metrics 
-  - 3. rubric #88  Error analysis with visualization of failure cases
-  - 4. rubric #89  Comparison of multiple architectures (aggregate_results helper)
-  - 5. rubric #91  Both qualitative and quantitative evaluation
+Evaluation: metrics, confusion matrix, error analysis, inference timing,
+bootstrap confidence intervals and kappa-tuned decoding.
 """
 import time
 import json
@@ -231,3 +225,116 @@ def aggregate_results(per_run_metrics: Dict[str, dict], save_path: Path):
     df.index.name = "run"
     df.to_csv(save_path)
     return df
+
+
+# 5. bootstrap confidence intervals
+def _resample_by_group(groups: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    # we resample participants, not clocks, since one person's clocks aren't independent
+    uniq, inverse = np.unique(groups, return_inverse=True)
+    rows_per_group = [np.where(inverse == g)[0] for g in range(len(uniq))]
+    picked = rng.integers(0, len(uniq), size=len(uniq))
+    return np.concatenate([rows_per_group[g] for g in picked])
+
+
+def bootstrap_metrics(y_true: np.ndarray,
+                      y_pred: np.ndarray,
+                      groups: np.ndarray,
+                      n_boot: int = 1000,
+                      seed: int = 42,
+                      alpha: float = 0.05) -> Dict[str, Dict[str, float]]:
+    """
+    95% confidence intervals for kappa, accuracy and macro-F1.
+    groups is the participant_id of every test clock.
+    """
+    y_true, y_pred, groups = map(np.asarray, (y_true, y_pred, groups))
+    metric_fns = {
+        "quadratic_kappa": lambda t, p: cohen_kappa_score(t, p, weights="quadratic"),
+        "accuracy":        lambda t, p: accuracy_score(t, p),
+        "macro_f1":        lambda t, p: f1_score(t, p, average="macro"),
+    }
+    rng = np.random.default_rng(seed)
+    draws = {k: [] for k in metric_fns}
+    for _ in range(n_boot):
+        idx = _resample_by_group(groups, rng)
+        for k, fn in metric_fns.items():
+            draws[k].append(fn(y_true[idx], y_pred[idx]))
+
+    out = {}
+    for k, fn in metric_fns.items():
+        lo, hi = np.quantile(draws[k], [alpha / 2, 1 - alpha / 2])
+        out[k] = {"point": float(fn(y_true, y_pred)), "lo": float(lo), "hi": float(hi)}
+    return out
+
+
+# 6. paired bootstrap between two models
+def paired_bootstrap_kappa(y_true: np.ndarray,
+                           y_pred_a: np.ndarray,
+                           y_pred_b: np.ndarray,
+                           groups: np.ndarray,
+                           n_boot: int = 1000,
+                           seed: int = 42) -> Dict[str, float]:
+    """
+    Is model A really better than model B? We resample participants, compute kappa
+    for both on the same draw, and look at the difference. If the interval crosses
+    0, we can't say A is better.
+    """
+    y_true, y_pred_a, y_pred_b, groups = map(np.asarray, (y_true, y_pred_a, y_pred_b, groups))
+    rng = np.random.default_rng(seed)
+    diffs = []
+    for _ in range(n_boot):
+        idx = _resample_by_group(groups, rng)
+        ka = cohen_kappa_score(y_true[idx], y_pred_a[idx], weights="quadratic")
+        kb = cohen_kappa_score(y_true[idx], y_pred_b[idx], weights="quadratic")
+        diffs.append(ka - kb)
+    diffs = np.asarray(diffs)
+    lo, hi = np.quantile(diffs, [0.025, 0.975])
+    return {
+        "kappa_a": float(cohen_kappa_score(y_true, y_pred_a, weights="quadratic")),
+        "kappa_b": float(cohen_kappa_score(y_true, y_pred_b, weights="quadratic")),
+        "diff": float(diffs.mean()),
+        "diff_lo": float(lo),
+        "diff_hi": float(hi),
+        "p_a_not_better": float((diffs <= 0).mean()),
+    }
+
+
+# 7. kappa-tuned decoding
+def expected_score(y_probs: np.ndarray) -> np.ndarray:
+    # the probability-weighted average score, between 0 and 5
+    return y_probs @ np.arange(y_probs.shape[1])
+
+
+def apply_thresholds(scores: np.ndarray, thresholds) -> np.ndarray:
+    # score < t1 -> 0, t1 <= score < t2 -> 1, and so on
+    return np.digitize(scores, np.sort(np.asarray(thresholds)))
+
+
+def optimize_thresholds(y_probs_val: np.ndarray,
+                        y_true_val: np.ndarray,
+                        n_rounds: int = 3,
+                        grid_step: float = 0.01) -> np.ndarray:
+    """
+    Argmax ignores that the scores are ordered. We use the expected score instead
+    and pick the cut points that maximize kappa on validation (never on test),
+    starting from 0.5, 1.5, ... 4.5 and moving one at a time.
+    """
+    scores = expected_score(y_probs_val)
+    k = y_probs_val.shape[1]
+    th = np.arange(k - 1) + 0.5
+
+    def kappa_for(t):
+        return cohen_kappa_score(y_true_val, apply_thresholds(scores, t), weights="quadratic")
+
+    best = kappa_for(th)
+    for _ in range(n_rounds):
+        for i in range(k - 1):
+            lo = th[i - 1] + grid_step if i > 0 else 0.0
+            hi = th[i + 1] - grid_step if i < k - 2 else float(k - 1)
+            for cand in np.arange(lo, hi + 1e-9, grid_step):
+                trial = th.copy()
+                trial[i] = cand
+                kap = kappa_for(trial)
+                if kap > best:
+                    best, th = kap, trial
+    print(f"[eval] tuned thresholds {np.round(th, 2).tolist()} -> val kappa {best:.4f}")
+    return th

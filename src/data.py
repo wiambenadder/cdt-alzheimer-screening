@@ -1,15 +1,12 @@
 """
 NHATS CDT dataset: loading, participant-disjoint splits, class imbalance handling.
 
-Rubric items:
-  - #1  Train/val/test split (70/15/15 ratios)
-  - #3  DataLoader batching + shuffling
-  - #8  Normalization of input
-  - #9  Basic preprocessing (resize, format conversion)
-  - #10 Preprocessing pipeline addressing >=2 data quality challenges
-        Challenge 1: Class imbalance (weighted sampling + class weights)
-        Challenge 2: Image quality / format heterogeneity (TIFF -> RGB, resize)
-        Challenge 3: Participant leakage across longitudinal rounds (disjoint split)
+The data challenges handled here:
+  Challenge 1: Class imbalance (weighted sampling + class weights)
+  Challenge 2: Image quality / format heterogeneity (TIFF -> RGB, resize)
+  Challenge 3: Participant leakage across longitudinal rounds (disjoint split)
+
+Every experiment should use get_splits(), so they all score the same test participants.
 """
 import pandas as pd
 import numpy as np
@@ -21,7 +18,7 @@ from sklearn.model_selection import train_test_split, GroupShuffleSplit
 from sklearn.utils.class_weight import compute_class_weight
 
 from .config import (
-    DataConfig, SEED, NUM_CLASSES, LABELS_CSV, RAW_IMAGES_DIR,
+    DataConfig, SEED, NUM_CLASSES, LABELS_CSV, RAW_IMAGES_DIR, SPLITS_CSV,
 )
 
 
@@ -82,7 +79,7 @@ def load_labels(
 
 
 def stratified_split(df: pd.DataFrame, cfg: DataConfig):
-    """Legacy random-stratified split. Kept for backward compatibility."""
+    """Legacy random-stratified split. Don't use it, it leaks participants."""
     assert abs(cfg.train_ratio + cfg.val_ratio + cfg.test_ratio - 1.0) < 1e-6
     train_df, temp_df = train_test_split(
         df, test_size=1 - cfg.train_ratio, stratify=df["label"], random_state=SEED,
@@ -138,6 +135,39 @@ def participant_disjoint_split(df: pd.DataFrame, cfg: DataConfig):
     print(f"  test:  {len(test_df):,} clocks from {len(test_ids):,} participants")
     print(f"\n  train class dist:\n{train_df['label'].value_counts().sort_index().to_string()}")
     print(f"\n  test  class dist:\n{test_df['label'].value_counts().sort_index().to_string()}")
+    return train_df, val_df, test_df
+
+
+def get_splits(df: pd.DataFrame, cfg: DataConfig, splits_csv: Path = SPLITS_CSV):
+    """
+    The first time we run participant_disjoint_split() and save who went where.
+    After that we just read the file back, so nobody can move between splits.
+    """
+    splits_csv = Path(splits_csv)
+    if splits_csv.exists():
+        assign = pd.read_csv(splits_csv, dtype={"participant_id": str})
+        mapping = dict(zip(assign["participant_id"], assign["split"]))
+        pid = df["participant_id"].astype(str)
+        missing = ~pid.isin(mapping.keys())
+        if missing.any():
+            print(f"[split] {missing.sum()} rows from participants not in {splits_csv.name}, "
+                  f"they are left out")
+        split_col = pid.map(mapping)
+        train_df = df[split_col == "train"].reset_index(drop=True)
+        val_df   = df[split_col == "val"].reset_index(drop=True)
+        test_df  = df[split_col == "test"].reset_index(drop=True)
+        print(f"[split] loaded frozen split from {splits_csv}")
+        print(f"  train={len(train_df):,}  val={len(val_df):,}  test={len(test_df):,}")
+        return train_df, val_df, test_df
+
+    train_df, val_df, test_df = participant_disjoint_split(df, cfg)
+    rows = []
+    for name, part in (("train", train_df), ("val", val_df), ("test", test_df)):
+        for p in part["participant_id"].astype(str).unique():
+            rows.append({"participant_id": p, "split": name})
+    splits_csv.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(splits_csv, index=False)
+    print(f"[split] saved split assignment to {splits_csv}")
     return train_df, val_df, test_df
 
 
