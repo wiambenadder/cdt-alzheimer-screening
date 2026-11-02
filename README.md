@@ -90,7 +90,11 @@ comparisons and does not weaken the validity of the results.
 
 ## Quick Start
 
-See `SETUP.md` for full install details. TL;DR:
+The easiest way to run everything is on Colab, straight from GitHub:
+
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/00_run_on_colab.ipynb)
+
+To run it locally instead, see `SETUP.md` for full install details. TL;DR:
 
 ```bash
 # 1. clone and install

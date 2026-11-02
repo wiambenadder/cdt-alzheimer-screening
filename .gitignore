@@ -36,3 +36,6 @@ videos/*.mov
 *.swp
 .pytest_cache/
 __pycache__/
+
+# per-clock predictions have participant IDs, they stay on Drive (NHATS data use agreement)
+results/**/predictions_*.csv

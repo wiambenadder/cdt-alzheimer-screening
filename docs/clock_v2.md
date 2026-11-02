@@ -35,7 +35,10 @@ The v1 numbers in the README stay there until the v2 runs replace them.
 
 ## Runs to do on Colab
 
-Before any of these, in the first cell:
+The simplest way is `notebooks/00_run_on_colab.ipynb` (Open in Colab badge in the README).
+It does sections A and B below and prints a summary to paste back.
+
+To run the commands by hand instead, put this in the first cell:
 
 ```
 %env CDT_DATA_DIR=/content/drive/MyDrive/cdt-data
