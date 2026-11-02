@@ -60,7 +60,22 @@ python -m src.run --models efficientnet_b0 --evaluate-only --crop-method project
 python -m src.run --compare vit_b16_v1_s42 vgg16_v1_s42
 ```
 
-Then re-run the attribution cell in NB05 to get maps that line up.
+Then make the attribution maps that line up (section A2 of the Colab notebook).
+
+**Results (run Nov 2, 2026 on an A100, same 8,938 test clocks as v1).** Kappa is quadratic
+weighted kappa with a 95% CI from resampling participants. "Tuned" uses cut points picked on
+validation and applied to test, with no retraining.
+
+| Model (v1 checkpoint) | Kappa | Tuned kappa | Accuracy | Macro F1 |
+|---|---|---|---|---|
+| ViT-B/16 | 0.808 [0.795, 0.821] | 0.836 [0.825, 0.846] | 0.672 | 0.648 |
+| VGG16 | 0.781 [0.767, 0.794] | 0.803 [0.790, 0.814] | 0.616 | 0.584 |
+| EfficientNet-B0 | 0.747 [0.732, 0.763] | 0.782 [0.769, 0.795] | 0.590 | 0.550 |
+
+* The ViT is really better than VGG16: +0.027 kappa, 95% CI [+0.019, +0.035] (paired, so the CI doesn't cross 0).
+* The v1 number in the README (0.812) is inside the new CI, so v1 reproduces.
+* Tuning the cut points alone takes the ViT from 0.808 to 0.836, and the two CIs don't overlap.
+  It's free (no retraining), so the app should use the tuned cut points.
 
 ### B. Retrain the main model with v2 preprocessing (3 seeds)
 
