@@ -2,38 +2,44 @@
 The Main configuration for this project.
 
 All of the hyperparameters, paths, and settings are defined here for
-reproducibility. For the ablation studies I will just construct a 
+reproducibility. For the ablation studies I will just construct a
 different config objects and re-run train().
 
+On Colab, set CDT_DATA_DIR and CDT_MODELS_DIR to the Drive folders before
+importing anything from src.
 """
+import os
 from pathlib import Path
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Tuple, List
 
 
 # The paths
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = PROJECT_ROOT / "data"
-MODELS_DIR = PROJECT_ROOT / "models"
-RESULTS_DIR = PROJECT_ROOT / "docs" / "results"
+DATA_DIR = Path(os.environ.get("CDT_DATA_DIR", PROJECT_ROOT / "data"))
+MODELS_DIR = Path(os.environ.get("CDT_MODELS_DIR", PROJECT_ROOT / "models"))
+RESULTS_DIR = Path(os.environ.get("CDT_RESULTS_DIR", PROJECT_ROOT / "results"))
 
-# The data layout 
-#   data/nhats_raw/<participant_id>.tif, for clock images
-#   data/labels.csv  that will have the cdt_score per participant
+# The data layout
+#   data/nhats_raw/round_XX/<participant_id>.tif, for clock images
+#   data/labels.csv  that will have the cdt_score per participant and round
 RAW_IMAGES_DIR = DATA_DIR / "nhats_raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 LABELS_CSV = DATA_DIR / "labels.csv"
+SPLITS_CSV = DATA_DIR / "splits.csv"
 
 # The task
 SEED = 42
 NUM_CLASSES = 6         # from 0 to 5
+
+# from the NHATS codebook, the score rates the drawing, not a diagnosis
 CLASS_NAMES = [
-    "0_severe_impairment",
-    "1_significant_errors",
-    "2_significant_errors_mild",
-    "3_minor_errors_moderate",
-    "4_minor_errors_mild",
-    "5_normal",
+    "0_not_recognizable",
+    "1_severely_distorted",
+    "2_moderately_distorted",
+    "3_mildly_distorted",
+    "4_reasonably_accurate",
+    "5_accurate",
 ]
 
 
@@ -47,10 +53,13 @@ class DataConfig:
     val_ratio: float = 0.15
     test_ratio: float = 0.15
 
-    # for the imbalance classes we can use"class_weights" (use weight CE loss), 
-    # or "weighted_sampler" (to oversample minority classes), 
+    # for the imbalance classes we can use"class_weights" (use weight CE loss),
+    # or "weighted_sampler" (to oversample minority classes),
     # or "none" (no correction, to use as ablation baseline)
     imbalance_strategy: str = "class_weights"
+
+    crop_method: str = "component"   # "projection" is the v1 crop
+    thicken_strokes: bool = False
 
 
 @dataclass
@@ -58,15 +67,16 @@ class TrainConfig:
     epochs: int = 25
     lr_head: float = 1e-3        # we use higher LR for newly-initialized head
     lr_backbone: float = 1e-5    # we use lower LR for pretrained backbone
-    weight_decay: float = 1e-4   # L2 regularization 
-    dropout: float = 0.3         # dropout on head 
+    weight_decay: float = 1e-4   # L2 regularization
+    dropout: float = 0.3         # dropout on head
 
-    optimizer: str = "adamw"     # "adamw" 
-    lr_scheduler: str = "cosine" # "cosine" 
+    optimizer: str = "adamw"     # "adamw", "adam" or "sgd"
+    lr_scheduler: str = "cosine" # "cosine", "plateau" or "none"
 
     early_stopping_patience: int = 5
-    mixed_precision: bool = True       
-    gradient_clip: float = 1.0          
+    select_metric: str = "val_loss"    # or "val_kappa", the metric we report
+    mixed_precision: bool = True
+    gradient_clip: float = 1.0
 
 
 @dataclass
