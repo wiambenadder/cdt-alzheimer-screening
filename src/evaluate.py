@@ -228,11 +228,29 @@ def aggregate_results(per_run_metrics: Dict[str, dict], save_path: Path):
 
 
 # 5. bootstrap confidence intervals
-def _resample_by_group(groups: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    # we resample participants, not clocks, since one person's clocks aren't independent
-    uniq, inverse = np.unique(groups, return_inverse=True)
-    rows_per_group = [np.where(inverse == g)[0] for g in range(len(uniq))]
-    picked = rng.integers(0, len(uniq), size=len(uniq))
+def fast_quadratic_kappa(y_true, y_pred, n_classes: int = NUM_CLASSES) -> float:
+    """same number as cohen_kappa_score(weights="quadratic"), but fast enough for 1000 draws."""
+    cm = np.bincount(n_classes * np.asarray(y_true) + np.asarray(y_pred),
+                     minlength=n_classes * n_classes).reshape(n_classes, n_classes)
+    n = cm.sum()
+    i, j = np.indices((n_classes, n_classes))
+    w = (i - j) ** 2 / (n_classes - 1) ** 2
+    expected = np.outer(cm.sum(1), cm.sum(0)) / n
+    denom = (w * expected).sum()
+    return float(1 - (w * cm).sum() / denom) if denom > 0 else 0.0
+
+
+def _rows_per_group(groups: np.ndarray):
+    # we resample participants, not clocks, since one person's clocks aren't independent.
+    # we group the rows once, doing it on every draw was very slow
+    _, inverse = np.unique(groups, return_inverse=True)
+    order = np.argsort(inverse, kind="stable")
+    cuts = np.flatnonzero(np.diff(inverse[order])) + 1
+    return np.split(order, cuts)
+
+
+def _resample_by_group(rows_per_group, rng: np.random.Generator) -> np.ndarray:
+    picked = rng.integers(0, len(rows_per_group), size=len(rows_per_group))
     return np.concatenate([rows_per_group[g] for g in picked])
 
 
@@ -248,14 +266,15 @@ def bootstrap_metrics(y_true: np.ndarray,
     """
     y_true, y_pred, groups = map(np.asarray, (y_true, y_pred, groups))
     metric_fns = {
-        "quadratic_kappa": lambda t, p: cohen_kappa_score(t, p, weights="quadratic"),
-        "accuracy":        lambda t, p: accuracy_score(t, p),
+        "quadratic_kappa": fast_quadratic_kappa,
+        "accuracy":        lambda t, p: float((t == p).mean()),
         "macro_f1":        lambda t, p: f1_score(t, p, average="macro"),
     }
     rng = np.random.default_rng(seed)
+    rows = _rows_per_group(groups)
     draws = {k: [] for k in metric_fns}
     for _ in range(n_boot):
-        idx = _resample_by_group(groups, rng)
+        idx = _resample_by_group(rows, rng)
         for k, fn in metric_fns.items():
             draws[k].append(fn(y_true[idx], y_pred[idx]))
 
@@ -280,11 +299,12 @@ def paired_bootstrap_kappa(y_true: np.ndarray,
     """
     y_true, y_pred_a, y_pred_b, groups = map(np.asarray, (y_true, y_pred_a, y_pred_b, groups))
     rng = np.random.default_rng(seed)
+    rows = _rows_per_group(groups)
     diffs = []
     for _ in range(n_boot):
-        idx = _resample_by_group(groups, rng)
-        ka = cohen_kappa_score(y_true[idx], y_pred_a[idx], weights="quadratic")
-        kb = cohen_kappa_score(y_true[idx], y_pred_b[idx], weights="quadratic")
+        idx = _resample_by_group(rows, rng)
+        ka = fast_quadratic_kappa(y_true[idx], y_pred_a[idx])
+        kb = fast_quadratic_kappa(y_true[idx], y_pred_b[idx])
         diffs.append(ka - kb)
     diffs = np.asarray(diffs)
     lo, hi = np.quantile(diffs, [0.025, 0.975])
@@ -323,7 +343,7 @@ def optimize_thresholds(y_probs_val: np.ndarray,
     th = np.arange(k - 1) + 0.5
 
     def kappa_for(t):
-        return cohen_kappa_score(y_true_val, apply_thresholds(scores, t), weights="quadratic")
+        return fast_quadratic_kappa(y_true_val, apply_thresholds(scores, t), k)
 
     best = kappa_for(th)
     for _ in range(n_rounds):

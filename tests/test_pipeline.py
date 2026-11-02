@@ -178,3 +178,62 @@ def test_run_end_to_end_with_random_weights():
     out = Path(os.environ["CDT_RESULTS_DIR"]) / "efficientnet_b0_s42"
     assert (out / "metrics.json").exists()
     assert (out / "predictions_test.csv").exists()
+
+
+# things the review found
+def test_fast_kappa_matches_sklearn():
+    from sklearn.metrics import cohen_kappa_score
+    from src.evaluate import fast_quadratic_kappa
+    rng = np.random.default_rng(9)
+    y, p = rng.integers(0, 6, 5000), rng.integers(0, 6, 5000)
+    p[:3000] = y[:3000]
+    assert abs(fast_quadratic_kappa(y, p) - cohen_kappa_score(y, p, weights="quadratic")) < 1e-9
+
+
+def test_bootstrap_is_fast_on_a_test_set_the_size_of_nhats():
+    import time
+    rng = np.random.default_rng(10)
+    n = 8938
+    y = rng.integers(0, 6, n)
+    pred = np.clip(y + rng.integers(-1, 2, n), 0, 5)
+    groups = rng.integers(0, 3500, n)
+    t = time.time()
+    bootstrap_metrics(y, pred, groups, n_boot=1000)
+    assert time.time() - t < 60, "the bootstrap is too slow for the real test set"
+
+
+def test_a_straight_pen_line_is_not_treated_as_a_scanner_bar():
+    from PIL import ImageDraw
+    page = Image.new("L", (2560, 3312), 255)
+    # a drawing that is just one long straight line
+    ImageDraw.Draw(page).line([(1200, 900), (1200, 1700)], fill=0, width=6)
+    crop = SmartCropClock(method="component")(page.convert("RGB"))
+    assert crop.size[0] < 1500, "the line was dropped and we fell back to the center square"
+
+
+def test_thicken_strokes_keeps_the_aspect_ratio():
+    from src.augmentation import ThickenStrokes
+    out = ThickenStrokes(224)(Image.new("RGB", (2000, 1000), "white"))
+    assert out.size == (896, 448)
+
+
+def test_train_saves_where_the_notebook_says(tmp_path):
+    # the notebooks set cfg.MODELS_DIR after importing, train() has to see that
+    import src.config as cfg
+    from src.train import train
+    from src.data import CDTDataset, build_dataloaders, compute_class_weights
+    from src.config import TrainConfig
+    labels = make_dataset(tmp_path / "d", n_participants=8, n_rounds=1, seed=12)
+    df = load_labels(tmp_path / "d" / "labels.csv")
+    tf = build_eval_transform(64)
+    ds = CDTDataset(df.head(8), tf)
+    loaders = build_dataloaders(ds, ds, ds, DataConfig(batch_size=4, num_workers=0))
+    old = cfg.MODELS_DIR
+    cfg.MODELS_DIR = tmp_path / "drive_models"
+    try:
+        out = train("efficientnet_b0", loaders[0], loaders[1], compute_class_weights(df),
+                    TrainConfig(epochs=1), "where_test", pretrained=False)
+    finally:
+        cfg.MODELS_DIR = old
+    assert Path(out["checkpoint_path"]).parent == tmp_path / "drive_models"
+    assert Path(out["checkpoint_path"]).exists()

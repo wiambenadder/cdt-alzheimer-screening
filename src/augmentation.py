@@ -146,7 +146,8 @@ class SmartCropClock:
                 bh = box[0].stop - box[0].start
                 bw = box[1].stop - box[1].start
                 fill = area / float(bh * bw)
-                if fill > 0.85 and area >= min_bar_area:
+                # a straight pen line also fills its box, but it is thin
+                if fill > 0.85 and area >= min_bar_area and min(bh, bw) >= 4:
                     small[labels == i] = False
 
         if small.sum() < 5:
@@ -206,8 +207,10 @@ class ThickenStrokes:
         self.intermediate = 4 * target_size
 
     def __call__(self, img: Image.Image) -> Image.Image:
-        if max(img.size) > self.intermediate:
-            img = img.resize((self.intermediate, self.intermediate), Image.BOX)
+        W, H = img.size
+        if max(W, H) > self.intermediate:
+            scale = self.intermediate / max(W, H)
+            img = img.resize((max(1, round(W * scale)), max(1, round(H * scale))), Image.BOX)
         return img.filter(ImageFilter.MinFilter(3))
 
 

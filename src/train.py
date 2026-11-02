@@ -8,9 +8,11 @@ What does this file do:
   4. Gradient clipping, mixed precision training on CUDA
   5. The optimizer switch using TrainConfig.optimizer
 
-Checkpoints go to MODELS_DIR (set CDT_MODELS_DIR to save them on Drive).
+Checkpoints go to cfg.MODELS_DIR. We read it when train() runs, so setting
+cfg.MODELS_DIR in a notebook (or CDT_MODELS_DIR) works.
 """
 import json
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -22,7 +24,8 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import cohen_kappa_score
 from tqdm import tqdm
 
-from .config import TrainConfig, MODELS_DIR, RESULTS_DIR, SEED
+from . import config as cfg_module
+from .config import TrainConfig, SEED
 from .models import get_model
 from .utils import set_seed, save_checkpoint, get_device, count_parameters
 
@@ -164,10 +167,10 @@ def train(model_name: str,
     scheduler = build_scheduler(optimizer, cfg, len(train_loader))
     scaler = torch.amp.GradScaler("cuda", enabled=(cfg.mixed_precision and device == "cuda"))
 
-    run_dir = RESULTS_DIR / run_name
+    run_dir = cfg_module.RESULTS_DIR / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
     writer = SummaryWriter(run_dir / "tb")
-    ckpt_path = MODELS_DIR / f"{run_name}_best.pt"
+    ckpt_path = Path(cfg_module.MODELS_DIR) / f"{run_name}_best.pt"
     print(f"[train] checkpoints -> {ckpt_path}")
 
     if cfg.select_metric not in ("val_loss", "val_kappa"):
