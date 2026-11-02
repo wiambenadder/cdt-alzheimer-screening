@@ -34,3 +34,5 @@ videos/*.mov
 .vscode/
 .idea/
 *.swp
+.pytest_cache/
+__pycache__/

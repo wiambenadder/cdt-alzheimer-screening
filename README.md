@@ -1,11 +1,19 @@
 # Deep Learning for Alzheimer's Screening from Clock Drawing Tests
 
 Fine-tune and compare VGG16, EfficientNet-B0, and a Vision Transformer (ViT-B/16)
-on the NHATS Clock Drawing Test dataset. Each model is trained to rate cognitive 
-impairment on a 6-point scale (0 = severe, 5 = normal). To understand what 
-each model looks at when making predictions, we use Grad-CAM (for CNNs) and patch 
-occlusion (for the ViT). We also run a 2×2 ablation study, testing whether freezing 
-the backbone and/or applying data augmentation improves performance.
+on the NHATS Clock Drawing Test dataset. Each model is trained to score each drawing
+the way NHATS coders do, on a 6-point scale (0 = not recognizable as a clock,
+5 = accurate). This score rates the drawing, it is not a dementia diagnosis.
+To understand what each model looks at when making predictions, we use Grad-CAM
+(for CNNs) and patch occlusion (for the ViT). We also run a 2×2 ablation study,
+testing whether freezing the backbone and/or applying data augmentation improves
+performance.
+
+> **Status (v2 in progress):** the summer results below were produced by v1 of the
+> pipeline. The v1 attribution maps did not line up with the clocks, and the
+> frozen VGG16 baseline used a split with participant leakage. `docs/clock_v2.md`
+> lists everything that changed and the runs that will replace these numbers,
+> with confidence intervals.
 
 Reproducing and extending: Hu, M., Qin, T., Gonzalez, R., Freedman, V. A., Zahodne, 
 L. B., Melipillán, E. R., & Murphey, Y. L. (2026). A novel vision transformer model 

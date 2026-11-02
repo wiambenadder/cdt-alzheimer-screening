@@ -85,6 +85,7 @@ This project used AI coding assistants (Claude Code) during development.
 | Debugging scheduler ordering | Claude identified that scheduler.step() was being called before optimizer.step(), which causes PyTorch to skip the first LR value. I verified the fix and updated src/train.py. |
 | Debugging AMP deprecation warnings | Claude suggested updating torch.cuda.amp.autocast to torch.amp.autocast and similarly for GradScaler. I tested that the updated calls produced the same training behavior. |
 | Grammar and documentation phrasing | Claude reviewed README and ATTRIBUTION.md for grammar. All technical decisions and result interpretations are my own. |
+| Clock component v2 (Nov 2026) | Claude reviewed the repo, found the issues listed in docs/clock_v2.md, and drafted the fixes: the v2 crop, the attribution overlay, the frozen split, bootstrap CIs, threshold tuning, src/run.py and the tests. I reviewed the changes and will check them against the real NHATS runs. |
 
 ### What AI Tools Were Not Used For
 
