@@ -1,0 +1,52 @@
+# Section B: ViT-B/16 v2, seed 42
+# Colab output, Nov 3, 2026, A100. Copied from the notebook output without changes,
+# except that 14 TensorFlow startup lines (oneDNN / cuda driver warnings, not used by
+# this code) and the terminal colors were removed. Only aggregate numbers, no participant IDs.
+#
+# The cell that produced it:
+#   if RUN_SECTION_B:
+#       !python -m src.run --models vit_b16 --seeds {B_SEEDS} --select-metric val_kappa \
+#           --run-tag _v2 --labels {LABELS} --num-workers {WORKERS}
+#       if os.path.exists(f"{os.environ['CDT_RESULTS_DIR']}/vit_b16_v1_s42"):
+#           !python -m src.run --compare vit_b16_v2_s42 vit_b16_v1_s42
+
+
+[data] loaded 59417 labeled clock images
+[data] class distribution:
+label
+0      538
+1     1956
+2     6604
+3    12726
+4    21974
+5    15619
+Name: count, dtype: int64
+[split] loaded frozen split from /content/drive/MyDrive/cdt-data/splits.csv
+  train=41,551  val=8,928  test=8,938
+[run] imbalance=class_weights weights=[19.29, 5.122, 1.482, 0.778, 0.449, 0.639]
+[train] run=vit_b16_v2_s42 seed=42 device=cuda
+[train] params total=85,803,270 trainable=85,803,270
+[train] checkpoints -> /content/drive/MyDrive/cdt-data/models/vit_b16_v2_s42_best.pt
+epoch 0 [train]:   0% 0/1298 [00:00<?, ?it/s]/content/cdt-alzheimer-screening/src/train.py:88: UserWarning: Detected call of `lr_scheduler.step()` before `optimizer.step()`. In PyTorch 1.1.0 and later, you should call them in the opposite order: `optimizer.step()` before `lr_scheduler.step()`.  Failure to do this will result in PyTorch skipping the first value of the learning rate schedule. See more details at https://pytorch.org/docs/stable/optim.html#how-to-adjust-learning-rate
+  scheduler.step()
+[train] ep=00 tr_loss=1.0969 tr_acc=0.538 val_loss=1.0715 val_acc=0.647 val_kappa=0.766
+[train] ep=01 tr_loss=0.9194 tr_acc=0.625 val_loss=0.9013 val_acc=0.669 val_kappa=0.785
+[train] ep=02 tr_loss=0.8614 tr_acc=0.650 val_loss=0.8352 val_acc=0.670 val_kappa=0.792
+[train] ep=03 tr_loss=0.8170 tr_acc=0.667 val_loss=1.1258 val_acc=0.683 val_kappa=0.796
+[train] ep=04 tr_loss=0.7929 tr_acc=0.673 val_loss=0.9009 val_acc=0.693 val_kappa=0.793
+[train] ep=05 tr_loss=0.7505 tr_acc=0.681 val_loss=0.9332 val_acc=0.699 val_kappa=0.814
+[train] ep=06 tr_loss=0.7155 tr_acc=0.692 val_loss=0.9940 val_acc=0.696 val_kappa=0.814
+[train] ep=07 tr_loss=0.6898 tr_acc=0.698 val_loss=0.9455 val_acc=0.702 val_kappa=0.815
+[train] ep=08 tr_loss=0.6500 tr_acc=0.704 val_loss=1.0166 val_acc=0.713 val_kappa=0.827
+[train] ep=09 tr_loss=0.6229 tr_acc=0.715 val_loss=1.1027 val_acc=0.703 val_kappa=0.819
+[train] ep=10 tr_loss=0.6091 tr_acc=0.717 val_loss=1.3732 val_acc=0.709 val_kappa=0.820
+[train] ep=11 tr_loss=0.5689 tr_acc=0.727 val_loss=1.3201 val_acc=0.710 val_kappa=0.821
+[train] ep=12 tr_loss=0.5327 tr_acc=0.736 val_loss=1.3923 val_acc=0.702 val_kappa=0.820
+[train] ep=13 tr_loss=0.5267 tr_acc=0.740 val_loss=1.4332 val_acc=0.690 val_kappa=0.812
+[train] early stop at epoch 13 (no val_kappa improvement for 5 epochs)
+[eval] tuned thresholds [1.01, 1.43, 2.59, 3.54, 4.44] -> val kappa 0.8415
+[eval] test kappa (argmax) = 0.834  [0.823, 0.845]
+[eval] test kappa (tuned)  = 0.849  [0.839, 0.858]
+[run] wrote /content/drive/MyDrive/cdt-data/results_v2/vit_b16_v2_s42/metrics.json
+[compare] vit_b16_v2_s42: kappa 0.834   vit_b16_v1_s42: kappa 0.808
+[compare] difference +0.026  95% CI [+0.019, +0.034]

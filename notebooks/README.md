@@ -22,3 +22,5 @@ Both platforms can run these notebooks. A few platform notes:
   then override paths in the first cell.
 
 `06_results_report.ipynb` puts every run side by side (table, training curves, confusion matrices). It reads the results on Drive, so it needs no GPU and works after a disconnect.
+
+`runs/B_vit_v2_seed42.ipynb`, `runs/B_vit_v2_seed43.ipynb`, `runs/B_vit_v2_seed44.ipynb` retrain the ViT with the v2 preprocessing, one notebook per seed. They continue a run that was cut by a disconnect and write `RUN_RECORD.md` on Drive. They are made from `runs/make_notebooks.py`.

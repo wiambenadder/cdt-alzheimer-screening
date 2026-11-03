@@ -79,10 +79,18 @@ validation and applied to test, with no retraining.
 
 ### B. Retrain the main model with v2 preprocessing (3 seeds)
 
+One notebook per seed: `notebooks/runs/B_vit_v2_seed42.ipynb`, `..seed43.ipynb`, `..seed44.ipynb`
+(all made from `notebooks/runs/make_notebooks.py`, so they are the same except for the seed).
+Each one runs
+
 ```
-python -m src.run --models vit_b16 --seeds 42 43 44 --select-metric val_kappa --run-tag _v2
-python -m src.run --compare vit_b16_v2_s42 vit_b16_v1_s42
+python -m src.run --models vit_b16 --seeds <seed> --select-metric val_kappa --run-tag _v2 --resume
+python -m src.run --compare vit_b16_v2_s<seed> vit_b16_v1_s42
+python -m src.record vit_b16_v2_s<seed>
 ```
+
+and writes `RUN_RECORD.md` next to the results. The status of every run and where each number
+comes from is in `docs/runs/README.md`.
 
 **Seed 42 (run Nov 3, 2026, A100, 14 epochs in about 5.3 hours, early stop):**
 test kappa 0.834 [0.823, 0.845], tuned 0.849 [0.839, 0.858].
@@ -90,7 +98,11 @@ Against the v1 ViT: +0.026, 95% CI [+0.019, +0.034], on the same test clocks.
 The validation loss was best at epoch 2 and then went up, but the validation kappa kept going up
 until epoch 8, so picking the epoch by kappa (not loss like in v1) kept a better model.
 v2 changes the crop, the white fill and the epoch selection at the same time, so +0.026 is the
-effect of all of them together. Seeds 43 and 44 are next.
+effect of all of them together. The full output is in `docs/runs/vit_b16_v2_s42.txt`.
+
+**Seed 43** stopped on Nov 3 when the laptop turned off. Since then the training state is saved
+after every epoch and the notebooks continue a cut run (`--resume`), so it runs again from its
+own notebook.
 
 To see all the runs side by side (table, training curves of every seed, confusion matrices),
 open `notebooks/06_results_report.ipynb` or run `python -m src.report`. It only reads the files

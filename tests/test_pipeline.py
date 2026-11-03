@@ -272,6 +272,66 @@ def test_report_puts_runs_side_by_side():
     assert len(s) == 1 and s.iloc[0]["n_seeds"] == 2 and s.iloc[0]["version"] == "v2"
     assert abs(s.iloc[0]["kappa_mean"] - 0.8315) < 1e-9
     assert r["comparisons"].iloc[0]["run_a"] == "vit_b16_v2_s42"
-    for f in ["runs.csv", "seeds.csv", "comparisons.csv", "kappa_ci.png",
+    assert "0.834" in (r["out_dir"] / "RESULTS.md").read_text()
+    for f in ["runs.csv", "seeds.csv", "comparisons.csv", "kappa_ci.png", "RESULTS.md",
               "training_curves.png", "confusion_matrices.png"]:
         assert (r["out_dir"] / f).exists(), f
+
+
+def _small_run(tag, *extra):
+    from src import run
+    data_dir = Path(os.environ["CDT_DATA_DIR"])
+    if not (data_dir / "labels.csv").exists():
+        make_dataset(data_dir, n_participants=30, n_rounds=2, seed=8)
+    run.main(["--models", "efficientnet_b0", "--no-pretrained", "--epochs", "3", "--patience", "10",
+              "--batch-size", "4", "--num-workers", "0", "--limit", "16", "--n-boot", "20",
+              "--run-tag", tag, "--labels", str(data_dir / "labels.csv"),
+              "--splits", str(data_dir / "splits.csv"), *extra])
+    return Path(os.environ["CDT_RESULTS_DIR"]) / f"efficientnet_b0{tag}_s42"
+
+
+def test_a_cut_run_continues_where_it_stopped(monkeypatch):
+    # what a laptop going to sleep does: the run stops after an epoch was saved
+    import pytest
+    import src.train as tr
+    real_evaluate, calls = tr.evaluate, {"n": 0}
+
+    def evaluate_then_cut(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("Colab disconnected")
+        return real_evaluate(*a, **k)
+
+    monkeypatch.setattr(tr, "evaluate", evaluate_then_cut)
+    with pytest.raises(RuntimeError):
+        _small_run("_cut")
+    out = Path(os.environ["CDT_RESULTS_DIR"]) / "efficientnet_b0_cut_s42"
+    last = Path(os.environ["CDT_MODELS_DIR"]) / "efficientnet_b0_cut_s42_last.pt"
+    assert len(json.load(open(out / "history.json"))) == 1
+    assert last.exists() and not (out / "metrics.json").exists()
+    assert json.load(open(out / "sessions.json"))[0]["status"].startswith("stopped")
+    assert "Not finished: 1 epoch" in __import__("src.record", fromlist=["x"]).write_record(out).read_text()
+
+    # the same command again, with --resume: it goes on from epoch 1, not from 0
+    monkeypatch.setattr(tr, "evaluate", real_evaluate)
+    _small_run("_cut", "--resume")
+    hist = json.load(open(out / "history.json"))
+    m = json.load(open(out / "metrics.json"))
+    assert [e["epoch"] for e in hist] == [0, 1, 2]
+    assert m["resumed"] is True and len(m["sessions"]) == 2
+    assert not last.exists()     # removed once the run is finished
+    record = (out / "RUN_RECORD.md").read_text()
+    assert "Finished" in record and "\n| 2" in record and "stopped: RuntimeError" in record
+    assert (out / "train_log.txt").exists() and "cut (no end" not in record
+    assert "[train] resuming" in (out / "train_log.txt").read_text()
+
+    # the same result as a run that was never cut (same seed, same data order)
+    full = _small_run("_full")
+    hist_full = json.load(open(full / "history.json"))
+    for a, b in zip(hist, hist_full):
+        assert abs(a["train_loss"] - b["train_loss"]) < 1e-4, (a, b)
+
+    # and a finished run is never trained again by accident
+    before = (out / "metrics.json").stat().st_mtime
+    _small_run("_cut", "--resume")
+    assert (out / "metrics.json").stat().st_mtime == before

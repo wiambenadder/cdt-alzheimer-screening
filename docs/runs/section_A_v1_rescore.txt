@@ -1,0 +1,98 @@
+# Section A: re-scoring the v1 checkpoints (no training)
+# Colab output, Nov 2, 2026, A100. Copied from the notebook output without changes,
+# except that 28 TensorFlow startup lines (oneDNN / cuda driver warnings, not used by
+# this code) and the terminal colors were removed. Only aggregate numbers, no participant IDs.
+#
+# The cell that produced it:
+#   if RUN_SECTION_A:
+#       v1 = {'vit_b16': 'vit_b16_ft', 'vgg16': 'vgg16_ft', 'efficientnet_b0': 'effb0_ft'}
+#       for model_name, ckpt_name in v1.items():
+#           ckpt = f"{os.environ['CDT_MODELS_DIR']}/{ckpt_name}_best.pt"
+#           if not os.path.exists(ckpt):
+#               print(f'[skip] {ckpt} not found')
+#               continue
+#           !python -m src.run --models {model_name} --evaluate-only --crop-method projection \
+#               --checkpoint {ckpt} --run-tag _v1 --labels {LABELS} --num-workers 4
+#       !python -m src.run --compare vit_b16_v1_s42 vgg16_v1_s42
+
+
+[data] loaded 59417 labeled clock images
+[data] class distribution:
+label
+0      538
+1     1956
+2     6604
+3    12726
+4    21974
+5    15619
+Name: count, dtype: int64
+[split] participant-disjoint split:
+  train: 41,551 clocks from 9,549 participants
+  val:   8,928 clocks from 2,046 participants
+  test:  8,938 clocks from 2,047 participants
+
+  train class dist:
+label
+0      359
+1     1352
+2     4674
+3     8904
+4    15427
+5    10835
+
+  test  class dist:
+label
+0      94
+1     323
+2     996
+3    1976
+4    3187
+5    2362
+[split] saved split assignment to /content/drive/MyDrive/cdt-data/splits.csv
+[run] imbalance=class_weights weights=[19.29, 5.122, 1.482, 0.778, 0.449, 0.639]
+[eval] tuned thresholds [0.56, 1.64, 2.25, 3.23, 4.27] -> val kappa 0.8257
+[eval] test kappa (argmax) = 0.808  [0.795, 0.821]
+[eval] test kappa (tuned)  = 0.836  [0.825, 0.846]
+[run] wrote /content/drive/MyDrive/cdt-data/results_v2/vit_b16_v1_s42/metrics.json
+[data] loaded 59417 labeled clock images
+[data] class distribution:
+label
+0      538
+1     1956
+2     6604
+3    12726
+4    21974
+5    15619
+Name: count, dtype: int64
+[split] loaded frozen split from /content/drive/MyDrive/cdt-data/splits.csv
+  train=41,551  val=8,928  test=8,938
+[run] imbalance=class_weights weights=[19.29, 5.122, 1.482, 0.778, 0.449, 0.639]
+[eval] tuned thresholds [1.01, 1.7, 2.49, 3.29, 4.43] -> val kappa 0.7965
+[eval] test kappa (argmax) = 0.781  [0.767, 0.794]
+[eval] test kappa (tuned)  = 0.803  [0.790, 0.814]
+[run] wrote /content/drive/MyDrive/cdt-data/results_v2/vgg16_v1_s42/metrics.json
+[data] loaded 59417 labeled clock images
+[data] class distribution:
+label
+0      538
+1     1956
+2     6604
+3    12726
+4    21974
+5    15619
+Name: count, dtype: int64
+[split] loaded frozen split from /content/drive/MyDrive/cdt-data/splits.csv
+  train=41,551  val=8,928  test=8,938
+[run] imbalance=class_weights weights=[19.29, 5.122, 1.482, 0.778, 0.449, 0.639]
+[eval] tuned thresholds [1.05, 1.66, 2.5, 3.24, 4.38] -> val kappa 0.7776
+[eval] test kappa (argmax) = 0.747  [0.732, 0.763]
+[eval] test kappa (tuned)  = 0.782  [0.769, 0.795]
+[run] wrote /content/drive/MyDrive/cdt-data/results_v2/efficientnet_b0_v1_s42/metrics.json
+[compare] vit_b16_v1_s42: kappa 0.808   vgg16_v1_s42: kappa 0.781
+[compare] difference +0.027  95% CI [+0.019, +0.035]
+
+# Output of the summary cell of the same notebook (reads the metrics.json files on Drive):
+efficientnet_b0_v1_s42   n_test=8938  kappa=0.747 [0.732, 0.763]  tuned=0.782 [0.769, 0.795]  acc=0.590  macroF1=0.550
+vgg16_v1_s42             n_test=8938  kappa=0.781 [0.767, 0.794]  tuned=0.803 [0.790, 0.814]  acc=0.616  macroF1=0.584
+vit_b16_v1_s42           n_test=8938  kappa=0.808 [0.795, 0.821]  tuned=0.836 [0.825, 0.846]  acc=0.672  macroF1=0.648
+compare_vit_b16_v1_s42_vs_vgg16_v1_s42: diff=+0.027 [+0.019, +0.035]

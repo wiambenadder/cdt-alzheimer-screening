@@ -92,7 +92,16 @@ comparisons and does not weaken the validity of the results.
 
 The easiest way to run everything is on Colab, straight from GitHub:
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/00_run_on_colab.ipynb)
+| What | Notebook |
+|---|---|
+| Section A (summer checkpoints scored again) and the attribution maps | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/00_run_on_colab.ipynb) |
+| Retrain the ViT with v2, seed 42 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/runs/B_vit_v2_seed42.ipynb) |
+| Retrain the ViT with v2, seed 43 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/runs/B_vit_v2_seed43.ipynb) |
+| Retrain the ViT with v2, seed 44 | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/runs/B_vit_v2_seed44.ipynb) |
+| All the runs side by side (no GPU needed) | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/wiambenadder/cdt-alzheimer-screening/blob/main/notebooks/06_results_report.ipynb) |
+
+Every run writes its own record (`RUN_RECORD.md`) next to its results on Drive, and
+`docs/runs/README.md` keeps track of which runs are done and where each number comes from.
 
 To run it locally instead, see `SETUP.md` for full install details. TL;DR:
 

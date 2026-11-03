@@ -155,6 +155,32 @@ def plot_confusions(results_dir: Path, runs: pd.DataFrame, path: Path) -> bool:
     return True
 
 
+def write_results_md(runs, comps, seeds, results_dir: Path, path: Path):
+    """The same tables as text, each number with the file it was read from."""
+    from .record import now
+    L = ["# Results", "", f"Written automatically on {now()} by `python -m src.report` from the "
+         f"metrics.json and compare_*.json files in `{results_dir}`. Nothing here is typed by hand.", "",
+         "## Every run", "", "| run | test clocks | best epoch | kappa (95% CI) | tuned kappa (95% CI) | accuracy | macro F1 | source |",
+         "|---|---|---|---|---|---|---|---|"]
+    for r in runs.itertuples():
+        best = "" if pd.isna(r.best_epoch) else int(r.best_epoch)
+        L.append(f"| {r.run} | {r.n_test:,} | {best} | {r.kappa:.3f} [{r.kappa_lo:.3f}, {r.kappa_hi:.3f}] | "
+                 f"{r.tuned_kappa:.3f} [{r.tuned_lo:.3f}, {r.tuned_hi:.3f}] | {r.accuracy:.3f} | {r.macro_f1:.3f} | "
+                 f"`{r.run}/metrics.json` |")
+    if not seeds.empty:
+        L += ["", "## Mean over the seeds", "", "| model | version | seeds | kappa mean (sd) | tuned mean (sd) |", "|---|---|---|---|---|"]
+        for s in seeds.itertuples():
+            L.append(f"| {s.model} | {s.version} | {s.seeds} | {s.kappa_mean:.3f} ({s.kappa_sd:.3f}) | "
+                     f"{s.tuned_mean:.3f} ({s.tuned_sd:.3f}) |")
+    if not comps.empty:
+        L += ["", "## Paired comparisons (same test clocks)", "", "| A | B | kappa A - kappa B (95% CI) | source |", "|---|---|---|---|"]
+        for c in comps.itertuples():
+            L.append(f"| {c.run_a} | {c.run_b} | {c.diff:+.3f} [{c.diff_lo:+.3f}, {c.diff_hi:+.3f}] | "
+                     f"`compare_{c.run_a}_vs_{c.run_b}.json` |")
+        L += ["", "If the interval doesn't cross 0, the difference is real (not noise)."]
+    Path(path).write_text("\n".join(L) + "\n")
+
+
 def make_report(results_dir: Path = RESULTS_DIR, out_dir: Path = None) -> dict:
     results_dir = Path(results_dir)
     out_dir = Path(out_dir) if out_dir else results_dir / "report"
@@ -173,6 +199,8 @@ def make_report(results_dir: Path = RESULTS_DIR, out_dir: Path = None) -> dict:
     plot_kappas(runs, out_dir / "kappa_ci.png")
     has_curves = plot_training_curves(results_dir, runs, out_dir / "training_curves.png")
     has_cm = plot_confusions(results_dir, runs, out_dir / "confusion_matrices.png")
+
+    write_results_md(runs, comps, seeds, results_dir, out_dir / "RESULTS.md")
 
     if runs["n_test"].nunique() > 1:
         print("[report] careful: the runs were not all tested on the same number of clocks")

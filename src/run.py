@@ -19,10 +19,16 @@ On Colab, point the data and model folders at Drive first:
     %env CDT_MODELS_DIR=/content/drive/MyDrive/cdt-data/models
 
 Every run writes metrics.json, predictions_val.csv and predictions_test.csv
-to results/<run_name>/.
+to results/<run_name>/, plus the paper trail from src/record.py (train_log.txt,
+sessions.json, RUN_RECORD.md).
+
+A run that already has metrics.json is skipped (use --force to redo it), and with --resume
+a run that was cut by a disconnect continues from its last saved epoch.
 """
 import argparse
 import json
+import shlex
+import sys
 from dataclasses import asdict
 from pathlib import Path
 
@@ -47,6 +53,7 @@ from .evaluate import (
     save_classification_report, plot_confusion_matrix,
 )
 from .utils import get_device, load_checkpoint
+from .record import RunLog, write_record, load_sessions
 
 
 def parse_args(argv=None):
@@ -81,6 +88,14 @@ def parse_args(argv=None):
     p.add_argument("--checkpoint", type=Path, default=None)
     p.add_argument("--n-boot", type=int, default=1000)
     p.add_argument("--compare", nargs=2, metavar=("RUN_A", "RUN_B"), default=None)
+
+    # long runs on Colab
+    p.add_argument("--resume", action="store_true",
+                   help="continue a run that was cut, from <run>_last.pt")
+    p.add_argument("--force", action="store_true",
+                   help="redo a run even if it already has metrics.json")
+    p.add_argument("--keep-last", action="store_true",
+                   help="keep <run>_last.pt (about 1 GB) after the run is finished")
     return p.parse_args(argv)
 
 
@@ -138,11 +153,15 @@ def compare(run_a: str, run_b: str, n_boot: int):
     out = RESULTS_DIR / f"compare_{run_a}_vs_{run_b}.json"
     with open(out, "w") as f:
         json.dump(res, f, indent=2)
+    print(f"[compare] wrote {out}")
+    for r in (run_a, run_b):
+        write_record(RESULTS_DIR / r)
     return res
 
 
 def main(argv=None):
     args = parse_args(argv)
+    cli = list(argv) if argv is not None else sys.argv[1:]
     if args.compare:
         compare(*args.compare, n_boot=args.n_boot)
         return
@@ -185,33 +204,59 @@ def main(argv=None):
             run_dir = RESULTS_DIR / run_name
             run_dir.mkdir(parents=True, exist_ok=True)
 
-            if args.evaluate_only:
-                if args.checkpoint is None:
-                    raise SystemExit("--evaluate-only needs --checkpoint")
-                ckpt = args.checkpoint
-                summary = {"run_name": run_name, "checkpoint_path": str(ckpt)}
-            else:
-                summary = train(model_name, train_loader, val_loader, class_weights,
-                                train_cfg, run_name, freeze_backbone=args.freeze_backbone,
-                                seed=seed, pretrained=not args.no_pretrained)
-                ckpt = summary["checkpoint_path"]
+            # a finished run is never overwritten by accident
+            if (run_dir / "metrics.json").exists() and not args.force:
+                print(f"[run] {run_name} is already finished ({run_dir / 'metrics.json'}), "
+                      f"skipping it (use --force to redo it)")
+                write_record(run_dir)
+                continue
 
-            model, _, _ = get_model(model_name, freeze_backbone=args.freeze_backbone,
-                                    dropout=train_cfg.dropout, pretrained=False)
-            model = load_checkpoint(model, ckpt, device).to(device)
-            metrics = evaluate_run(model, val_loader, test_loader, val_df, test_df,
-                                   run_dir, device, args.n_boot)
+            command = "python -m src.run " + " ".join(shlex.quote(str(a)) for a in cli)
+            with RunLog(run_dir, command):
+                run_one(args, model_name, seed, run_name, run_dir, loaders, val_df, test_df,
+                        class_weights, train_cfg, data_cfg, device)
+            print(f"[record] wrote {write_record(run_dir)}")
 
-            record = {
-                "run_name": run_name, "model_name": model_name, "seed": seed,
-                "data_config": asdict(data_cfg), "train_config": asdict(train_cfg),
-                "freeze_backbone": args.freeze_backbone, "use_aug": not args.no_aug,
-                "best_epoch": summary.get("best_epoch"), "checkpoint": str(ckpt),
-                "n_test": len(test_df), **metrics,
-            }
-            with open(run_dir / "metrics.json", "w") as f:
-                json.dump(record, f, indent=2)
-            print(f"[run] wrote {run_dir / 'metrics.json'}")
+
+def run_one(args, model_name, seed, run_name, run_dir, loaders, val_df, test_df,
+            class_weights, train_cfg, data_cfg, device):
+    train_loader, val_loader, test_loader = loaders
+    if args.evaluate_only:
+        if args.checkpoint is None:
+            raise SystemExit("--evaluate-only needs --checkpoint")
+        ckpt = args.checkpoint
+        summary = {"run_name": run_name, "checkpoint_path": str(ckpt)}
+    else:
+        summary = train(model_name, train_loader, val_loader, class_weights,
+                        train_cfg, run_name, freeze_backbone=args.freeze_backbone,
+                        seed=seed, pretrained=not args.no_pretrained, resume=args.resume)
+        ckpt = summary["checkpoint_path"]
+
+    model, _, _ = get_model(model_name, freeze_backbone=args.freeze_backbone,
+                            dropout=train_cfg.dropout, pretrained=False)
+    model = load_checkpoint(model, ckpt, device).to(device)
+    metrics = evaluate_run(model, val_loader, test_loader, val_df, test_df,
+                           run_dir, device, args.n_boot)
+
+    record = {
+        "run_name": run_name, "model_name": model_name, "seed": seed,
+        "data_config": asdict(data_cfg), "train_config": asdict(train_cfg),
+        "freeze_backbone": args.freeze_backbone, "use_aug": not args.no_aug,
+        "best_epoch": summary.get("best_epoch"), "checkpoint": str(ckpt),
+        "n_train": len(train_loader.dataset), "n_val": len(val_df), "n_test": len(test_df),
+        "resumed": summary.get("resumed", False),
+        "sessions": load_sessions(run_dir),
+        **metrics,
+    }
+    with open(run_dir / "metrics.json", "w") as f:
+        json.dump(record, f, indent=2)
+    print(f"[run] wrote {run_dir / 'metrics.json'}")
+
+    # the full training state is about 1 GB on Drive, it's not needed once the run is done
+    last = summary.get("last_state_path")
+    if last and Path(last).exists() and not args.keep_last:
+        Path(last).unlink()
+        print(f"[run] removed {last} (the run is finished, {Path(ckpt).name} is kept)")
 
 
 if __name__ == "__main__":

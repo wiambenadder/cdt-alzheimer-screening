@@ -10,8 +10,16 @@ What does this file do:
 
 Checkpoints go to cfg.MODELS_DIR. We read it when train() runs, so setting
 cfg.MODELS_DIR in a notebook (or CDT_MODELS_DIR) works.
+
+Two checkpoints per run:
+  <run>_best.pt  only the model weights of the best epoch (what we evaluate)
+  <run>_last.pt  everything at the end of the last finished epoch (model, optimizer,
+                 scheduler, history, random number generators), so a run that was cut by a
+                 disconnect can continue with resume=True instead of starting again.
 """
 import json
+import os
+import random
 from pathlib import Path
 from typing import Optional
 
@@ -136,6 +144,30 @@ def evaluate(model, loader, criterion, device,
     return ev_loss, ev_acc, ev_kappa
 
 
+def save_last_state(path: Path, epoch, model, optimizer, scheduler, scaler, history,
+                    best_val_loss, best_val_kappa, best_epoch, patience, finished):
+    """Everything needed to continue after this epoch. We write to a temporary file
+    and rename it, so a disconnect in the middle of saving never leaves a broken file."""
+    state = {
+        "epoch": epoch, "model": model.state_dict(), "optimizer": optimizer.state_dict(),
+        "scheduler": scheduler.state_dict() if scheduler is not None else None,
+        "scaler": scaler.state_dict(), "history": history,
+        "best_val_loss": best_val_loss, "best_val_kappa": best_val_kappa,
+        "best_epoch": best_epoch, "patience": patience, "finished": finished,
+        "rng": {
+            "torch": torch.get_rng_state(),
+            "cuda": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None,
+            "numpy": np.random.get_state(),
+            "python": random.getstate(),
+        },
+    }
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    torch.save(state, tmp)
+    os.replace(tmp, path)
+
+
 def train(model_name: str,
           train_loader, val_loader,
           class_weights: torch.Tensor,
@@ -143,7 +175,8 @@ def train(model_name: str,
           run_name: str,
           freeze_backbone: bool = False,
           seed: int = SEED,
-          pretrained: bool = True) -> dict:
+          pretrained: bool = True,
+          resume: bool = False) -> dict:
     """
     We train one model and return a dict summary:
       {run_name, seed, history, best_val_loss, best_val_kappa, best_epoch, checkpoint_path}
@@ -181,8 +214,37 @@ def train(model_name: str,
     best_epoch = 0
     patience = 0
     history = []
+    start_epoch = 0
+    finished = False
 
-    for epoch in range(cfg.epochs):
+    last_path = Path(cfg_module.MODELS_DIR) / f"{run_name}_last.pt"
+    if resume and last_path.exists():
+        state = torch.load(last_path, map_location=device, weights_only=False)
+        model.load_state_dict(state["model"])
+        optimizer.load_state_dict(state["optimizer"])
+        if scheduler is not None and state.get("scheduler") is not None:
+            scheduler.load_state_dict(state["scheduler"])
+        scaler.load_state_dict(state["scaler"])
+        history = state["history"]
+        best_val_loss, best_val_kappa = state["best_val_loss"], state["best_val_kappa"]
+        best_epoch, patience, finished = state["best_epoch"], state["patience"], state["finished"]
+        start_epoch = state["epoch"] + 1
+        # the random generators too, so the next epoch shuffles the data like it would have
+        torch.set_rng_state(state["rng"]["torch"].cpu())
+        if torch.cuda.is_available() and state["rng"]["cuda"] is not None:
+            torch.cuda.set_rng_state_all([t.cpu() for t in state["rng"]["cuda"]])
+        np.random.set_state(state["rng"]["numpy"])
+        random.setstate(state["rng"]["python"])
+        print(f"[train] resuming {run_name} after epoch {state['epoch']} "
+              f"(best so far: epoch {best_epoch}, val_kappa {best_val_kappa:.3f})")
+        if finished:
+            print("[train] this run had already finished training, nothing to redo")
+    elif resume:
+        print(f"[train] nothing to resume for {run_name}, starting from epoch 0")
+
+    for epoch in range(start_epoch, cfg.epochs):
+        if finished:
+            break
         tr_loss, tr_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, scheduler, scaler,
             device, cfg, epoch, writer,
@@ -218,10 +280,20 @@ def train(model_name: str,
             if patience >= cfg.early_stopping_patience:
                 print(f"[train] early stop at epoch {epoch} (no {cfg.select_metric} "
                       f"improvement for {cfg.early_stopping_patience} epochs)")
-                break
+                finished = True
+        if epoch == cfg.epochs - 1:
+            finished = True
 
-    with open(run_dir / "history.json", "w") as f:
-        json.dump(history, f, indent=2)
+        # written every epoch, so a disconnect never loses the epochs that are done
+        with open(run_dir / "history.json", "w") as f:
+            json.dump(history, f, indent=2)
+        save_last_state(last_path, epoch, model, optimizer, scheduler, scaler, history,
+                        best_val_loss, best_val_kappa, best_epoch, patience, finished)
+        if finished:
+            break
+
+    if not history:
+        raise RuntimeError(f"{run_name}: no epoch was trained")
     writer.close()
 
     return {
@@ -232,4 +304,6 @@ def train(model_name: str,
         "best_val_kappa": best_val_kappa,
         "best_epoch": best_epoch,
         "checkpoint_path": str(ckpt_path),
+        "last_state_path": str(last_path),
+        "resumed": start_epoch > 0,
     }
