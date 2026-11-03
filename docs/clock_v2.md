@@ -84,6 +84,18 @@ python -m src.run --models vit_b16 --seeds 42 43 44 --select-metric val_kappa --
 python -m src.run --compare vit_b16_v2_s42 vit_b16_v1_s42
 ```
 
+**Seed 42 (run Nov 3, 2026, A100, 14 epochs in about 5.3 hours, early stop):**
+test kappa 0.834 [0.823, 0.845], tuned 0.849 [0.839, 0.858].
+Against the v1 ViT: +0.026, 95% CI [+0.019, +0.034], on the same test clocks.
+The validation loss was best at epoch 2 and then went up, but the validation kappa kept going up
+until epoch 8, so picking the epoch by kappa (not loss like in v1) kept a better model.
+v2 changes the crop, the white fill and the epoch selection at the same time, so +0.026 is the
+effect of all of them together. Seeds 43 and 44 are next.
+
+To see all the runs side by side (table, training curves of every seed, confusion matrices),
+open `notebooks/06_results_report.ipynb` or run `python -m src.report`. It only reads the files
+every run saves on Drive, so it works after a disconnect.
+
 ### C. The new questions, one change at a time against B
 
 | Run | Command change | Question |

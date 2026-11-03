@@ -20,3 +20,5 @@ Both platforms can run these notebooks. A few platform notes:
   `RAW_IMAGES_DIR` in the first cell.
 - **Google Colab**: Mount Google Drive, place data under `/content/drive/...`,
   then override paths in the first cell.
+
+`06_results_report.ipynb` puts every run side by side (table, training curves, confusion matrices). It reads the results on Drive, so it needs no GPU and works after a disconnect.

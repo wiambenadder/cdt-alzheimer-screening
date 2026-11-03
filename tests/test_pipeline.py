@@ -8,6 +8,7 @@ attribution maps lining up with the input, the confidence intervals, and one tin
 end-to-end run of src.run with random weights.
 """
 import os
+import json
 import tempfile
 from pathlib import Path
 
@@ -237,3 +238,40 @@ def test_train_saves_where_the_notebook_says(tmp_path):
         cfg.MODELS_DIR = old
     assert Path(out["checkpoint_path"]).parent == tmp_path / "drive_models"
     assert Path(out["checkpoint_path"]).exists()
+
+
+def test_report_puts_runs_side_by_side():
+    # fake results like the ones on Drive: a scored v1 run and two trained v2 seeds
+    from src.report import make_report
+    res = _TMP / "report_results"
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 6, 300)
+    for name, k, seed, hist in [("vit_b16_v1_s42", 0.808, 42, False),
+                                ("vit_b16_v2_s42", 0.834, 42, True),
+                                ("vit_b16_v2_s43", 0.829, 43, True)]:
+        d = res / name
+        d.mkdir(parents=True)
+        ci = {"quadratic_kappa": {"lo": k - 0.01, "hi": k + 0.01}}
+        json.dump({"run_name": name, "model_name": "vit_b16", "seed": seed, "best_epoch": 3 if hist else None,
+                   "n_test": 300, "argmax": {"quadratic_kappa": k, "accuracy": 0.7, "macro_f1": 0.6},
+                   "argmax_ci": ci, "tuned": {"quadratic_kappa": k + 0.01}, "tuned_ci": ci},
+                  open(d / "metrics.json", "w"))
+        if hist:
+            json.dump([{"epoch": e, "train_loss": 1 - e / 10, "train_acc": 0.5, "val_loss": 0.9,
+                        "val_acc": 0.6, "val_kappa": 0.7 + e / 100} for e in range(6)],
+                      open(d / "history.json", "w"))
+        pred = np.where(rng.random(300) < 0.7, y, rng.integers(0, 6, 300))
+        pd.DataFrame({"participant_id": "x", "image_path": "p", "y_true": y, "y_pred": pred}) \
+            .to_csv(d / "predictions_test.csv", index=False)
+    json.dump({"diff": 0.026, "diff_lo": 0.019, "diff_hi": 0.034},
+              open(res / "compare_vit_b16_v2_s42_vs_vit_b16_v1_s42.json", "w"))
+
+    r = make_report(res)
+    assert len(r["runs"]) == 3
+    s = r["seeds"]
+    assert len(s) == 1 and s.iloc[0]["n_seeds"] == 2 and s.iloc[0]["version"] == "v2"
+    assert abs(s.iloc[0]["kappa_mean"] - 0.8315) < 1e-9
+    assert r["comparisons"].iloc[0]["run_a"] == "vit_b16_v2_s42"
+    for f in ["runs.csv", "seeds.csv", "comparisons.csv", "kappa_ci.png",
+              "training_curves.png", "confusion_matrices.png"]:
+        assert (r["out_dir"] / f).exists(), f
